@@ -1,0 +1,40 @@
+{
+  "name": "ChestFishingEggGame",
+  "tree": {
+    "$className": "DataModel",
+    "ReplicatedStorage": {
+      "$className": "ReplicatedStorage",
+      "$path": "ReplicatedStorage",
+      "Remotes": {
+        "$className": "Folder",
+        "Cast": { "$className": "RemoteEvent" },
+        "Notify": { "$className": "RemoteEvent" },
+        "Effect": { "$className": "RemoteEvent" },
+        "Sync": { "$className": "RemoteEvent" },
+        "Action": { "$className": "RemoteFunction" }
+      },
+      "CustomModels": {
+        "$className": "Folder",
+        "$ignoreUnknownInstances": true
+      }
+    },
+    "ServerScriptService": {
+      "$className": "ServerScriptService",
+      "$path": "ServerScriptService"
+    },
+    "StarterGui": {
+      "$className": "StarterGui",
+      "$path": "StarterGui"
+    },
+    "StarterPlayer": {
+      "$className": "StarterPlayer",
+      "$properties": {
+        "EnableMouseLockOption": false
+      },
+      "StarterPlayerScripts": {
+        "$className": "StarterPlayerScripts",
+        "$path": "StarterPlayer/StarterPlayerScripts"
+      }
+    }
+  }
+}
