@@ -15,15 +15,52 @@ local AutoFishers = require(Modules.AutoFishers)
 local Shop = require(Modules.Shop)
 local Market = require(Modules.Market)
 local Pets = require(Modules.Pets)
+local Bag = require(Modules.Bag)
+local SafeZone = require(Modules.SafeZone)
+local Guard = require(Modules.Guard)
+local NoSwim = require(Modules.NoSwim)
+local Teleports = require(Modules.Teleports)
+local House = require(Modules.House)
+local FishingSpots = require(Modules.FishingSpots)
 
 local map = MapBuilder.Build()
 Plots.Init(map, {
 	OnIncubator = Hatchery.OnPrompt,
 	OnFisher = AutoFishers.Collect,
+	OnStash = Bag.Deposit,
+	OnAssign = House.OnAssign, -- ổ pet, móc balo, kệ trưng bày, hộp thư quà hằng ngày
+	OnRelease = House.OnRelease,
 })
+SafeZone.Init(map)
 Fishing.Init(map)
+FishingSpots.Init(map) -- 6 điểm câu (phao CHEST) trên hồ
+Teleports.Init(map)
+NoSwim.Init()
 Shop.Init(map)
 Market.Init(map)
+
+-- Ngỗng bắt được người chơi: mất đồ chưa cất, về nhà mình
+Guard.Init(map, {
+	-- Ngỗng chỉ để ý người khả nghi: đang kéo câu (thấy xa) hoặc túi đang có đồ chưa cất (chỉ thấy gần)
+	Suspicion = function(player)
+		if Fishing.IsReeling(player) then
+			return "Reeling"
+		elseif Bag.Count(player) > 0 then
+			return "Loot"
+		end
+		return nil
+	end,
+	OnCaught = function(player)
+		Fishing.Cancel(player)
+		local lost = Bag.Clear(player)
+		Plots.TeleportHome(player) -- bị bắt: về thẳng nhà mình
+		if lost > 0 then
+			Remote.Notify(player, ("The goose got you! You lost %d unsealed chest(s)."):format(lost))
+		else
+			Remote.Notify(player, "The goose got you! Sent back home.")
+		end
+	end,
+})
 
 -- ===== Yêu cầu từ client (RemoteFunction "Action") =====
 -- Mỗi hàm trả về: ok (bool), message (string hiện lên màn hình)
@@ -35,14 +72,19 @@ local actions = {
 	EquipRod = Shop.EquipRod,
 	BuyAutoFisher = Shop.BuyAutoFisher,
 	BuyIncubator = Shop.BuyIncubator,
+	BuyBagUpgrade = Shop.BuyBagUpgrade,
+	BuyGear = Shop.BuyGear,
 	StartHatch = Hatchery.StartHatch,
 	SellEgg = Market.SellEgg,
 	SellPet = Market.SellPet,
+	-- "Lake": ra hồ (tốn tiền) / "Shop": tới Tool Shop / "Plot": về nhà (miễn phí, chặn khi có đồ hoặc bị đuổi). Luật ở Teleports.lua
 	Teleport = function(player, where)
-		if where == "Plot" then
-			return Plots.TeleportHome(player)
-		elseif where == "Plaza" then
-			return Plots.TeleportPlaza(player)
+		if where == "Lake" then
+			return Teleports.ToLake(player)
+		elseif where == "Shop" then
+			return Teleports.ToShop(player)
+		elseif where == "Plot" then
+			return Teleports.ToHome(player)
 		end
 		return false
 	end,
@@ -64,6 +106,7 @@ local function onPlayerAdded(player)
 	Plots.Assign(player)
 	Fishing.SetupPlayer(player)
 	Pets.SetupPlayer(player)
+	Bag.SetupPlayer(player)
 
 	-- Mỗi lần hồi sinh: về plot của mình
 	local function goHome(character)
@@ -80,7 +123,10 @@ end
 Players.PlayerAdded:Connect(onPlayerAdded)
 Players.PlayerRemoving:Connect(function(player)
 	Fishing.RemovePlayer(player)
+	FishingSpots.RemovePlayer(player)
+	Teleports.RemovePlayer(player)
 	Pets.RemovePlayer(player)
+	Bag.RemovePlayer(player)
 	Plots.Release(player)
 	Data.Release(player)
 end)

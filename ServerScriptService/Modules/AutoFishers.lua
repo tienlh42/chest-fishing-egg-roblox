@@ -38,6 +38,7 @@ function AutoFishers.Collect(player, slot)
 	entry.Stored = 0
 	Data.Update(player)
 	Plots.UpdateLabels(player)
+	Plots.PlayMachineCollect(player, slot)
 
 	local msg = ("Opened %d chests: +%d coins"):format(stored, totalCoins)
 	for tier, count in pairs(eggs) do

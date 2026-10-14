@@ -34,6 +34,10 @@ local function defaultProfile()
 		IncubatorSlots = Config.Incubators.StartSlots,
 		Incubators = {},
 		AutoFishers = {},
+		BagLevel = 0, -- số lần đã nâng cấp túi (Config.Bag.Upgrades, mua ở Tool Shop)
+		LastDaily = 0, -- ngày (os.time // 86400) đã nhận quà hằng ngày gần nhất
+		Gear = {}, -- trang bị đã mua: { RocketSandals = true } (Config.Gear)
+		-- Tutorial, StarterGiven: đặt trong Data.Load (người cũ / người mới xử lý khác nhau)
 	}
 	for tier in pairs(Config.Eggs) do
 		profile.Eggs[tier] = 0
@@ -88,6 +92,18 @@ function Data.Load(player)
 	profiles[player] = reconcile(typeof(saved) == "table" and saved or defaultProfile())
 	canSave[player] = ok
 
+	-- Người mới: tặng 1 Starter Egg (nở ra Cat) + bật hướng dẫn. Người cũ đã có pet thì bỏ qua hướng dẫn.
+	local profile = profiles[player]
+	if profile.Tutorial == nil then
+		profile.Tutorial = #profile.Pets > 0 and 99 or 1 -- bước hướng dẫn đang làm (Tutorial.lua), 99 = xong
+	end
+	if not profile.StarterGiven then
+		profile.StarterGiven = true
+		if #profile.Pets == 0 then
+			profile.Eggs.Starter = (profile.Eggs.Starter or 0) + 1
+		end
+	end
+
 	-- Bản dev: chạy trong Studio thì cho đầy tiền để test
 	if Config.Dev.Enabled and RunService:IsStudio() then
 		profiles[player].Coins = math.max(profiles[player].Coins, Config.Dev.Coins)
@@ -136,15 +152,20 @@ function Data.Spend(player, amount)
 	return true
 end
 
+-- Trả về true nếu lưu xong (hoặc phiên này không lưu được: đã cảnh báo lúc tải, không chặn gameplay)
 function Data.Save(player)
 	local profile = profiles[player]
-	if not (profile and canSave[player]) then
-		return
+	if not profile then
+		return false
+	end
+	if not canSave[player] then
+		return true
 	end
 	local ok, err = pcall(store.SetAsync, store, tostring(player.UserId), profile)
 	if not ok then
 		warn("Không lưu được dữ liệu của", player.Name, err)
 	end
+	return ok
 end
 
 function Data.Release(player)

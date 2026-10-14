@@ -16,7 +16,6 @@ local remotes = ReplicatedStorage:WaitForChild("Remotes")
 
 local player = Players.LocalPlayer
 
-local CAST_DISTANCE = 15 -- phao rơi cách người bao xa (stud)
 local WATER_COLOR = Color3.fromRGB(150, 200, 255)
 
 local fxFolder = Instance.new("Folder")
@@ -43,11 +42,11 @@ local function arc(a, peak, b, t)
 end
 
 -- Model chỉ để trang trí: neo cố định, không va chạm
+-- (model asset có rig Motor6D chỉ neo PrimaryPart, xem Models.Anchor; script animation của model tự chạy khi vào workspace)
 local function spawnVisual(name)
-	local model = Models.Get(name)
+	local model = Models.Anchor(Models.Get(name))
 	for _, d in ipairs(model:GetDescendants()) do
 		if d:IsA("BasePart") then
-			d.Anchored = true
 			d.CanCollide = false
 			d.CanQuery = false
 		end
@@ -141,8 +140,8 @@ end
 -- Nghiêng cần: góc dương = ngả ra sau, âm = chúc về trước
 local function tiltRod(angle, duration)
 	local rod = getRod()
-	if not rod then
-		return
+	if not rod or rod:GetAttribute("Anim") ~= nil then
+		return -- cần asset tự có animation Cast / Reel / Catch / Miss (server đổi attribute Anim, xem Fishing.lua)
 	end
 	baseGrip[rod] = baseGrip[rod] or rod.Grip
 	local tween = TweenService:Create(rod, TweenInfo.new(duration, Enum.EasingStyle.Quad), {
@@ -159,6 +158,15 @@ local function lineStart()
 	if tip and tip:IsA("Attachment") then
 		return tip
 	end
+	if tip and tip:IsA("BasePart") then -- cần asset: "Tip" là Part ở đầu cần, dây buộc vào Attachment trong đó
+		local point = tip:FindFirstChild("LineStart")
+		if not point then
+			point = Instance.new("Attachment")
+			point.Name = "LineStart"
+			point.Parent = tip
+		end
+		return point
+	end
 	local hrp = getRoot()
 	return hrp and hrp:FindFirstChild("RootAttachment")
 end
@@ -166,7 +174,7 @@ end
 -- ===== Câu cá =====
 local cast = nil -- phiên câu hiện tại { Bobber, Landing }
 
-local function onCastStart()
+local function onCastStart(data)
 	if cast then
 		cast.Bobber:Destroy()
 		cast = nil
@@ -176,7 +184,7 @@ local function onCastStart()
 		return
 	end
 
-	local landing = groundBelow(inFront(CAST_DISTANCE))
+	local landing = data.Landing -- server đã kiểm: chắc chắn là mặt nước
 	local bobber = spawnVisual("Bobber")
 	local state = { Bobber = bobber, Landing = landing }
 	cast = state
@@ -218,6 +226,22 @@ local function onCastStart()
 	end
 end
 
+-- Mở nắp rương quanh mép sau
+local function openLid(chest)
+	if chest:GetAttribute("Anim") ~= nil then
+		chest:SetAttribute("Anim", "Open") -- rương asset: animation Open (nén, bật nắp, thè lưỡi)
+		return
+	end
+	local lid = chest:FindFirstChild("Lid", true)
+	if lid and lid:IsA("BasePart") then
+		local closed = lid.CFrame
+		local hinge = closed * CFrame.new(0, -lid.Size.Y / 2, lid.Size.Z / 2)
+		animate(0.4, function(a)
+			lid.CFrame = hinge * CFrame.Angles(math.rad(110) * a, 0, 0) * hinge:Inverse() * closed
+		end, Enum.EasingStyle.Back)
+	end
+end
+
 local function showChest(data, fromPos)
 	if not getRoot() then
 		return
@@ -228,33 +252,33 @@ local function showChest(data, fromPos)
 	local rotation = goal.Rotation
 
 	-- Rương bay từ dưới nước lên, xoay 1 vòng rồi đáp trước mặt
+	Models.SetAnim(chest, "Spawn")
 	local from = fromPos - Vector3.new(0, 2, 0)
 	local peak = (from + target) / 2 + Vector3.new(0, 10, 0)
 	animate(1, function(a)
 		chest:PivotTo(CFrame.new(arc(from, peak, target, a)) * rotation * CFrame.Angles(0, (1 - a) * math.pi * 2, 0))
 	end, Enum.EasingStyle.Quad)
 
-	-- Mở nắp quanh mép sau
-	local lid = chest:FindFirstChild("Lid", true)
-	if lid and lid:IsA("BasePart") then
-		local closed = lid.CFrame
-		local hinge = closed * CFrame.new(0, -lid.Size.Y / 2, lid.Size.Z / 2)
-		animate(0.4, function(a)
-			lid.CFrame = hinge * CFrame.Angles(math.rad(110) * a, 0, 0) * hinge:Inverse() * closed
-		end, Enum.EasingStyle.Back)
+	-- Rương hồ cấm (data.Coins = nil) chưa biết bên trong có gì: đóng nắp, chỉ báo "đã vào túi"
+	if data.Coins then
+		openLid(chest)
 	end
-
 	burst(target + Vector3.new(0, 1.5, 0), Color3.fromRGB(255, 215, 0), 30)
-	local text = ("+%d coins"):format(data.Coins)
+	local text = data.Coins and ("+%d coins"):format(data.Coins) or "In your bag!"
 	if data.Egg then
 		text ..= (" + %s Egg"):format(data.Egg)
 	end
 	floatingText(chest.PrimaryPart, text, Color3.fromRGB(255, 225, 80))
 
 	task.wait(1.5)
-	animate(0.3, function(a)
-		chest:ScaleTo(math.max(1 - a, 0.01))
-	end)
+	if chest:GetAttribute("Anim") ~= nil then
+		chest:SetAttribute("Anim", "Vanish") -- đóng nắp, nhảy lên xoay rồi chìm (1.1 giây)
+		task.wait(1.1)
+	else
+		animate(0.3, function(a)
+			chest:ScaleTo(math.max(1 - a, 0.01))
+		end)
+	end
 	chest:Destroy()
 end
 
@@ -283,6 +307,43 @@ local function onCatch(data)
 	showChest(data, state.Landing)
 end
 
+-- Câu hụt: rương nổi lên bật nắp như đang cười, rồi chìm lại "tõm"
+local function onCastFail(data)
+	local state = cast
+	cast = nil -- dừng vòng nhấp nhô
+	if not state then
+		return
+	end
+	local landing = state.Landing
+	state.Bobber:Destroy()
+	burst(landing, WATER_COLOR, 25)
+	if not (data and data.Chest) then
+		return
+	end
+
+	local chest = spawnVisual(data.Chest)
+	Models.SetAnim(chest, "Spawn") -- nổi lên từ nước, nảy lên
+	local below = landing - Vector3.new(0, 1.5, 0)
+	local above = landing + Vector3.new(0, 0.7, 0)
+	animate(0.4, function(a)
+		chest:PivotTo(CFrame.new(below:Lerp(above, a)))
+	end, Enum.EasingStyle.Back)
+	openLid(chest)
+	task.wait(0.4)
+	animate(0.6, function(a)
+		chest:PivotTo(CFrame.new(above:Lerp(below - Vector3.new(0, 1.5, 0), a)))
+	end, Enum.EasingStyle.Quad)
+	burst(landing, WATER_COLOR, 15)
+	chest:Destroy()
+end
+
+-- Pet kiệt sức: biến mất trong làn bong bóng
+local function onPetDown(data)
+	if data and data.Position then
+		burst(data.Position, Color3.fromRGB(190, 235, 255), 30)
+	end
+end
+
 -- ===== Trứng nở (tại máy ấp) =====
 local function onHatched(data)
 	local hrp = getRoot()
@@ -295,6 +356,7 @@ local function onHatched(data)
 
 	-- Pet bật lên, xoay vòng rồi biến mất (sau đó pet thật bay theo người)
 	local pet = spawnVisual(data.Pet)
+	Models.SetAnim(pet, "Happy") -- pet asset nhảy mừng
 	pet:ScaleTo(0.05)
 	pet:PivotTo(base)
 	animate(1.2, function(a)
@@ -338,9 +400,12 @@ end
 -- ===== Nhận lệnh từ server =====
 local handlers = {
 	CastStart = onCastStart,
+	CastFail = onCastFail,
 	Catch = onCatch,
+	PetDown = onPetDown,
 	Hatched = onHatched,
 	Collect = onCollect,
+	Deposit = onCollect, -- cất đồ vào Stash: cùng dạng dữ liệu với thu rương máy câu (Coins, Eggs, Position)
 }
 
 remotes:WaitForChild("Effect").OnClientEvent:Connect(function(kind, data)
@@ -399,3 +464,54 @@ for _, d in ipairs(workspace:GetDescendants()) do
 	filterPrompt(d)
 end
 workspace.DescendantAdded:Connect(filterPrompt)
+
+-- ===== Âm thanh (Config.Sounds) =====
+-- Phát tại chỗ cho riêng người chơi này khi server báo sự kiện qua RemoteEvent "Effect".
+local SoundService = game:GetService("SoundService")
+local soundCache = {}
+
+local function playSound(key, volume)
+	local id = Config.Sounds[key]
+	if not id or id == "" then
+		return
+	end
+	local sound = soundCache[key]
+	if not sound then
+		sound = Instance.new("Sound")
+		sound.Name = "Sfx_" .. key
+		sound.SoundId = id
+		sound.Parent = SoundService
+		soundCache[key] = sound
+	end
+	sound.Volume = volume or 0.6
+	SoundService:PlayLocalSound(sound)
+end
+
+local SOUND_OF = {
+	CastFail = "Splash", -- "tõm": hụt rương
+	Catch = "Catch",
+	Deposit = "Coins",
+	Collect = "Coins",
+	Hatched = "Pop",
+	PetDown = "PetWarn",
+}
+local lastPetHP
+
+remotes.Effect.OnClientEvent:Connect(function(kind, data)
+	if SOUND_OF[kind] then
+		playSound(SOUND_OF[kind])
+	elseif kind == "Alert" and data then
+		if data.State == "Suspicious" then
+			playSound("GooseHonk", 0.8)
+		elseif data.State == "Chase" then
+			playSound("Whistle", 0.7)
+		end
+	elseif kind == "PetHP" and data and data.HasPet and not data.Down then
+		-- pet vừa tụt xuống dưới ngưỡng báo nguy thì kêu 1 tiếng
+		local warnAt = data.Max * Config.Pet.WarnRatio
+		if lastPetHP and lastPetHP > warnAt and data.HP <= warnAt then
+			playSound("PetWarn", 0.8)
+		end
+		lastPetHP = data.HP
+	end
+end)

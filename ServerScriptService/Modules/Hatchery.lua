@@ -6,6 +6,7 @@ local Config = require(ReplicatedStorage.Config)
 local Data = require(script.Parent.Data)
 local Plots = require(script.Parent.Plots)
 local Remote = require(script.Parent.Remote)
+local Tutorial = require(script.Parent.Tutorial)
 
 local Hatchery = {}
 
@@ -43,6 +44,7 @@ function Hatchery.OnPrompt(player, slot)
 	if petName then
 		Remote.Effect(player, "Hatched", { Pet = petName, Position = Plots.SlotPosition(player, "IncubatorSlot" .. slot) })
 		Remote.Notify(player, ("You hatched a %s!"):format(petName))
+		Tutorial.Complete(player, "Hatch")
 	end
 end
 

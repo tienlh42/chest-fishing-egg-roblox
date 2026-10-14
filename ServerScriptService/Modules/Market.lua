@@ -14,6 +14,9 @@ function Market.SellEgg(player, tier, sellAll)
 	if typeof(tier) ~= "string" or not Config.Eggs[tier] then
 		return false, "Invalid egg."
 	end
+	if not Config.SellPrices.Eggs[tier] then
+		return false, ("%s Eggs can't be sold. Hatch it instead!"):format(tier) -- vd. Starter Egg
+	end
 	local have = profile.Eggs[tier] or 0
 	if have < 1 then
 		return false, ("You don't have any %s Eggs."):format(tier)

@@ -7,47 +7,58 @@ Code chỉ dựa vào **tên** của các Part/Model, nên sau này bạn tự b
 
 ## 1. Bố cục tổng thể (nhìn từ trên xuống, phía trên = hướng -Z)
 
+Hồ ở **chính giữa** (tâm = gốc toạ độ), **8 nhà xếp vòng quanh** theo hình elip khớp dáng hồ, nên nhà nào ra hồ cũng xa như nhau (~130 stud).
+**Không có sảnh chính**: hồi sinh / bị ngỗng bắt đều về thẳng nhà mình.
+
 ```
- x=-180                                                   x=+180
- [Plot1] z=-150      [Tool Shop]          [Market]      [Plot5] z=-150
- [Plot2] z=-50     (-73,-28)   [Plaza]   (73,-28)       [Plot6] z=-50
-   ‖ đường dọc ════ đường ngang ══ (0,0) ══ đường ngang ════ ‖
- [Plot3] z=+50                    ║ Dock                [Plot7] z=+50
- [Plot4] z=+150             [ Hồ chung ]                [Plot8] z=+150
-                             (0, 95) 100x70
+                 Plot6        Plot7
+        Plot5   ╭──── đường vòng (R=150) ────╮   Plot8
+       (ToolShop)│  ┌─── công viên ───────┐  │
+                 │  │   ┌── HỒ 130x90 ──┐  │  │
+        Plot4  ──┼──┼── │    (0,0,0)    │ ─┼──┼──  Plot1
+                 │  │   └───────────────┘  │  │
+                 │  └──────────────────────┘  │   (Market)
+        Plot3   ╰────────────────────────────╯   Plot2
 ```
 
-| Khu | Vị trí tâm | Kích thước | Chức năng |
-|---|---|---|---|
-| Plaza (quảng trường) | (0, 0, 0) | 50 x 50 | Điểm hồi sinh chung, đài phun nước |
-| Tool Shop | (-73.5, 0, -28) | 30 x 24 | Mua/chọn cần câu, mua máy câu tự động, mua thêm máy ấp |
-| Market | (73.5, 0, -28) | 30 x 24 | Bán trứng và pet cho NPC |
-| Hồ chung + Dock | (0, 0, 95) | 100 x 70 | Câu tay (đứng trên cầu tàu) |
-| 8 Plot | x = ±180, z = -150 / -50 / 50 / 150 | 90 x 90 | Mảnh đất riêng của từng người chơi |
+| Khu | Vị trí | Ghi chú |
+|---|---|---|
+| Công viên hồ (Lake Park) | hồ tâm (0,0,0) 130x90 bo góc; công viên x -110..110, z -80..80 | Hồ cấm câu (ngỗng tuần tra). Lối gạch + lan can + đèn quanh hồ (câu từ lối gạch qua lan can), 4 lối ra, 2 quảng trường, nhà bảo vệ. Chi tiết: `PARK_REDESIGN.md` |
+| Đường vòng | bán kính 150, rộng 10 | Có lối gạch vào từng nhà và 2 cửa hàng |
+| 8 Plot (nhà gỗ) | elip Rx = 228, Rz = 212 (`PLOT_RX/RZ` trong `MapBuilder.lua`), góc 22.5° + k·45° | Cổng quay về phía hồ. Là vùng an toàn |
+| Tool Shop | góc 225°, cách tâm 192 | Có điểm hồi sinh `Spawn` phía trước (chỉ dùng lúc mới vào, sau đó về nhà) |
+| Market | góc 45°, cách tâm 192 | Bán trứng, pet |
 
-Đường đi: đường ngang z = 0 nối Plaza với 2 cột plot, 2 đường dọc x = ±128 chạy dọc cổng các plot.
+### Nền đất và hồ (Terrain)
+- Cả map nằm trên **Terrain** cỏ LeafyGrass (mặt đất y = 0) do code tạo (`ParkBuilder.lua`). **Baseplate bị xoá khi chạy game** (nếu không nó cắt ngang lòng hồ).
+- Hồ hình chữ nhật bo góc (`HX, HZ, R` trong `ParkBuilder.lua`), sâu 8 stud, đáy cát. Màu/sóng nước chỉnh ở `terrain.Water*` trong `buildTerrain()`.
+- Câu cá dựa vào Part vô hình tên `Water` phủ vùng hồ (Terrain không có tên để code tìm).
+- Lưu ý kỹ thuật: xem mục 7 của `PARK_REDESIGN.md` (fill Air trước Water, lệch 2 stud của Terrain, LeafyGrass).
 
-## 2. Bên trong 1 Plot (90 x 90)
+## 2. Bên trong 1 Plot = lô nhà gỗ (90 x 90)
 
-Cổng plot quay về phía đường (hướng -Z của Model plot).
+Cổng quay về phía đường (hướng -Z của Model plot). Code: `ServerScriptService/Modules/HouseBuilder.lua`.
 
 ```
             (phía sau plot, +Z)
- ┌─────────────────────────────────────────┐
- │  HATCHERY (mái che)   │  Ao riêng        │
- │  [Inc3]   [Inc4]      │  (Water 36x40)   │
- │                       │                  │
- │  [Inc1]   [Inc2]      │                  │
- │                       │ [F1][F2][F3][F4] │  <- ô máy câu, quay mặt ra ao
- │                                          │
- │               [Home]                     │  <- điểm dịch chuyển về plot
- └──────────────┤ Cổng + biển tên ├────────┘
+ ┌──────────────────────────────────────────────┐
+ │  CHUỒNG ẤP TRỨNG (gỗ)     │  AO VƯỜN (nước thật) │
+ │  [Inc3]   [Inc4]          │                      │
+ │  [Inc1]   [Inc2]          │ [F1][F2][F3][F4]     │  <- ô máy câu, quay mặt ra ao
+ │          ┌──────────────┐                        │
+ │          │  NHÀ GỖ 32x24│ (vào được: giường, bàn,│
+ │          │  24 x 18     │  kệ sách, lò sưởi)     │
+ │          └───[hiên]─────┘                        │
+ │ cây [STASH]  [Home]=thảm      cây   hộp thư=Sign  │
+ └──────────────┤ cổng rào trắng ├────────────────┘
             (phía trước, -Z, ra đường)
 ```
 
-- **Hatchery**: tối đa 4 máy ấp. Ban đầu mở 1, mua thêm ở Tool Shop. Các slot chưa mở hiện chữ "Locked".
-- **Ao + ô máy câu**: tối đa 4 máy câu tự động, mua ở Tool Shop (tự lắp vào ô trống kế tiếp). Người chơi cũng có thể câu tay ở ao nhà mình.
-- **Home**: khi hồi sinh hoặc bấm nút **My Plot** sẽ được đưa về đây.
+- **Nhà gỗ**: vào được qua cửa trước, có nội thất. Mái gỗ giống nhau mọi nhà.
+- **Chuồng ấp trứng**: tối đa 4 máy ấp, ban đầu mở 1, mua thêm ở Tool Shop.
+- **Ao vườn**: 4 ô máy câu tự động + câu tay an toàn (rương vào thẳng tài khoản).
+- **Home**: tấm thảm trước hiên – hồi sinh / bấm **My Plot** sẽ về đây.
+- **Hộp thư** (Part `Sign`): hiện tên chủ nhà.
 
 ## 3. Quy ước tên (QUAN TRỌNG khi tự build)
 
@@ -55,13 +66,19 @@ Toàn bộ map nằm trong `Workspace > Map` (Folder). **Nếu `Workspace` đã 
 
 | Đường dẫn / Tên | Loại | Bắt buộc | Ghi chú |
 |---|---|---|---|
-| `Map > ... > Spawn` | SpawnLocation | Có | Điểm hồi sinh ở Plaza, nút **Plaza** dịch chuyển tới đây |
+| `Map > ... > Spawn` | SpawnLocation | Có | Điểm xuất hiện lúc mới vào game (sau đó server đưa về nhà). Có vùng an toàn 60x60 quanh nó |
 | `Map > ... > Water` | Part (bao nhiêu cũng được) | Có | Mọi Part tên `Water` = nơi được phép câu (đứng trong vòng 25 stud) |
 | `Map > ToolShop > ... > PromptPart` | Part | Có | Chỗ hiện nút "[E] Shop" |
 | `Map > Market > ... > PromptPart` | Part | Có | Chỗ hiện nút "[E] Sell" |
 | `Map > Plots > Plot1` ... `Plot8` | Model | Có | Số trong tên = thứ tự cấp plot |
 | `Plot > ... > Home` | Part | Có | Điểm dịch chuyển về plot; hướng -Z của Part = hướng nhân vật nhìn |
 | `Plot > ... > Sign` | Part | Nên có | Hiện tên chủ plot |
+| `Plot > ... > Stash` | Model/Part | Có | Rương cất đồ ngoài sân trước, cạnh lối đá (code gắn nút [E] cho chủ nhà) |
+| `Plot > ... > PetBed` | Part | Nên có | Ổ pet: chủ đứng gần thì pet hồi HP nhanh hơn |
+| `Map > ... > ShopArrival` | Part vô hình | Nên có | Điểm đáp khi bấm nút **Tool Shop** |
+| `Plot > ... > TrophyShelf` + `TrophySlot1..6` | Part | Nên có | Kệ trưng bày pet; mỗi TrophySlot là chỗ đặt 1 pet (-Z quay ra phía người xem) |
+| `Map > ... > FishingSpot` | Part vô hình (≥1) | Có | Điểm câu trên hồ cấm (code dựng phao CHEST). Không có thì không câu được ở hồ |
+| `Map > ... > LakeArrival` | Part vô hình (≥1) | Có | Điểm đáp khi bấm nút **Lake** (chọn điểm gần nhà người chơi nhất) |
 | `Plot > ... > IncubatorSlot1..4` | Part | Có | Bệ đặt máy ấp (máy ấp đặt lên mặt trên) |
 | `Plot > ... > FisherSlot1..4` | Part | Có | Bệ đặt máy câu; **hướng -Z của Part phải quay ra mặt nước** |
 | `Plot > ... > Water` | Part | Nên có | Ao riêng |
@@ -80,14 +97,16 @@ Ghi chú:
    Chỉ cần **giữ đúng tên** các mục ở bảng trên.
 5. Muốn dùng lại map tạm: xoá `Workspace > Map`.
 
+⚠️ Terrain (hồ, đất, cát) **không nằm trong folder `Map`** nên copy `Map` sẽ không mang theo terrain. Khi tự build map: dùng **Terrain Editor** (tab Home > Editor) để vẽ hồ/đất, nhớ giữ Part vô hình tên `Water` phủ vùng được câu.
+
 Model đặt lên map (máy ấp, máy câu, NPC, rương, pet...) thay ở `ReplicatedStorage > CustomModels`, xem `HUONG_DAN.md`.
 
 ## 5. Checklist giai đoạn tạo map
 
-- [x] Map tạm: Plaza, Tool Shop, Market, hồ chung + dock, 8 plot
+- [x] Map tạm: công viên hồ ở giữa, Tool Shop, Market, 8 nhà gỗ xếp vòng quanh (bỏ Plaza + cầu tàu)
 - [x] Mỗi plot có Hatchery (4 bệ), ao + 4 ô máy câu, Home, biển tên
 - [x] Cấp plot khi người chơi vào, dọn plot khi rời
-- [x] Nút **My Plot** / **Plaza** để dịch chuyển
+- [x] Nút **My Plot** để về nhà (bị chặn khi túi có đồ / đang bị đuổi)
 - [x] Chỉ câu được khi đứng gần nước
 - [ ] *(Bạn)* Copy map tạm vào place và trang trí
 - [ ] *(Bạn)* Thay model thật vào `CustomModels`

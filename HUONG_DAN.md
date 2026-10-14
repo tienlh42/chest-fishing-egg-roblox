@@ -27,7 +27,7 @@ Làm nhỏ trước, chạy được rồi mới thêm. Đừng làm tất cả 
   - `StarterGui`: giao diện của người chơi
 
 ## Bước 2: Map
-Map màn 1 (Plaza, Tool Shop, Market, hồ chung, 8 plot riêng) được code **tự dựng** khi bấm Play.
+Map màn 1 (công viên hồ ở giữa, 8 nhà gỗ xếp vòng quanh, Tool Shop, Market) được code **tự dựng** khi bấm Play.
 Xem bố cục, quy ước tên và cách thay bằng map thật trong **`MAP_LEVEL1.md`**.
 
 ## Bước 3: Đồng bộ code bằng Rojo
@@ -36,14 +36,19 @@ Code nằm trong thư mục này và được Rojo đồng bộ vào Studio (kh�
 2. Studio -> tab **Plugins** -> **Rojo** -> **Connect** -> **Accept**.
 
 ## Bước 4: Chạy thử
-1. Nhấn **F5**. Bạn xuất hiện ở plot của mình.
-2. Bấm **Plaza** -> đi theo cầu tàu ra hồ -> bấm **Cast** (hoặc cầm cần và click) -> nhận rương.
-3. Về plot (**My Plot**) -> đến máy ấp trong Hatchery -> bấm **E** -> chọn trứng -> đợi -> **E** để nhận pet.
-4. **Tool Shop** (trái Plaza): mua cần câu, máy câu tự động, thêm máy ấp. **Market** (phải Plaza): bán trứng, pet.
-5. Máy câu tự động trên plot tích rương cả khi offline; đến máy bấm **E** để mở.
-6. Xem lỗi ở **View > Output** (chữ đỏ = lỗi, đọc dòng đầu tiên).
+1. Nhấn **F5**. Bạn xuất hiện trước nhà mình (thảm đỏ trước hiên).
+2. Chạy ra hồ ở giữa map (giữ **Shift** để chạy) -> đứng trên lối gạch, quay mặt ra hồ -> **GIỮ** nút **Fish** tròn to ở góc dưới phải (hoặc phím **F**).
+   Nhả nút = tạm dừng (giữ tiến độ). Thanh đầy -> rương vào **túi tạm** (Bag x/4).
+3. Coi chừng **ngỗng bảo vệ**: nó kêu "Honk?" thì nhả nút ngay. Bị đuổi thì chạy về nhà. Bị bắt = mất đồ trong túi, về nhà.
+4. Về nhà -> bấm **E** ở rương **Stash** trong nhà để cất đồ (cộng coins/trứng). Đang có đồ trong túi thì không bấm **My Plot** được.
+5. Ấp trứng: chuồng ấp sau nhà -> **E** ở máy ấp -> chọn trứng -> đợi -> **E** nhận pet.
+6. **Tool Shop** / **Market** nằm giữa các nhà trên đường vòng: mua cần câu, máy câu tự động, máy ấp / bán trứng, pet.
+7. Máy câu tự động ở ao sau nhà tích rương cả khi offline; đến máy bấm **E** để mở.
+8. Xem lỗi ở **View > Output** (chữ đỏ = lỗi, đọc dòng đầu tiên).
 
 ## Bước 5: Hiểu code (đọc theo thứ tự)
+> Danh sách đầy đủ và mới nhất các module (Bag, Guard, SafeZone, ParkBuilder, HouseBuilder...) xem **`PROJECT_OVERVIEW.md`**. Lịch sử thay đổi xem **`DEVLOG.md`**.
+
 | File | Vai trò |
 |---|---|
 | `ReplicatedStorage/Config.lua` | **Mọi con số**: rương, trứng, pet, giá cần câu, máy câu, máy ấp, giá bán |
@@ -79,17 +84,30 @@ Tiếp theo:
 ## Thay model & animation tạm bằng đồ thật
 Hiện tại game dùng **model tạm** dựng bằng Part (`ReplicatedStorage/Models.lua`) và **hoạt ảnh tạm** bằng tween (`StarterPlayer/StarterPlayerScripts/Effects.client.lua`).
 
-**Thay model:** trong Studio, kéo model của bạn vào `ReplicatedStorage > CustomModels` và đặt **đúng tên**:
+**Model asset (đã ghép sẵn):** 29 model từ repo `roblox-assets` (cần, pet, trứng, rương, máy câu, ngỗng) nằm ở `Assets/Models/*.rbxmx`, Rojo đồng bộ vào `ReplicatedStorage > CustomModels`. Tên game -> tên asset khai trong trường `Model` của `Config.lua`:
+
+| Trong game | Asset (`Assets/Models`) |
+|---|---|
+| Cần: Duckling / Catfish / Turtle / Fox / Lucky Cat / Rainbow Dragon | `Rod_Starter`, `Rod_Catfish`, `Rod_Turtle`, `Rod_Fox`, `Rod_Cat`, `Rod_Dragon` |
+| Rương: Wooden / Blue / Purple / Golden / Rainbow | `TreasureChest_Common` ... `TreasureChest_Mythic` |
+| Trứng: Starter / Reed / Bubble / Crystal / Gold / Dragon | `Egg_Starter` ... `Egg_Dragon` |
+| Pet: Chef Cat / Baker Dog / Muscle Duck / Magician Cat / K9 Dog / Office Dragon | `Pet_CatPot`, `Pet_DogBaker`, `Pet_DuckMuscle`, `Pet_CatMagician`, `Pet_DogK9`, `Pet_DragonOffice` |
+| Máy câu thứ 1..5 | `AutoFisher_Common` ... `AutoFisher_Mythic` |
+| Ngỗng bảo vệ | `PoliceGoose` |
+
+Cập nhật asset khi repo `roblox-assets` có bản mới: `python tools/prepare_assets.py [đường dẫn repo]` (chép + tắt script bản mẫu + vá `RodEffects`). Asset là Model rig Motor6D, animation đổi bằng attribute `Anim` (`Models.SetAnim`); sound của asset chưa có ID (cần upload `.wav`, điền vào bảng đầu script `*Sounds`).
+
+**Thay model khác:** trong Studio, kéo model của bạn vào `ReplicatedStorage > CustomModels` và đặt **đúng tên** (hoặc tên khai ở trường `Model` trong Config):
 
 | Tên | Là gì | Ghi chú |
 |---|---|---|
-| `Basic Rod`, `Sturdy Rod`, `Pro Rod`, `Legend Rod` | Cần câu | Phải là **Tool** có Part `Handle`; thêm Attachment `Tip` ở đầu cần để buộc dây |
+| Tên trong `Config.Rods` | Cần câu | **Tool** có Part `Handle` (thêm Attachment `Tip` để buộc dây), hoặc Model rig có `HumanoidRootPart` + `Tip` (game tự bọc thành Tool) |
 | `Bobber` | Phao | Model, đặt PrimaryPart |
-| `Wooden Chest`, `Golden Chest`, `Diamond Chest` | Rương | Part tên `Lid` sẽ tự mở nắp |
-| `Common Egg`, `Rare Egg` | Trứng | |
-| `Cat`, `Dog`, `Fox`, `Dragon`, `Phoenix` | Pet | Mặt trước quay về hướng -Z |
+| Tên trong `Config.Chests` | Rương | Part tên `Lid` sẽ tự mở nắp (model tạm) |
+| `<Tier> Egg` (khoá trong `Config.Eggs`) | Trứng | |
+| Tên trong `Config.Pet.Stats` | Pet | Mặt trước quay về hướng -Z |
 | `Incubator` | Máy ấp | Pivot ở đáy; Attachment `EggPoint` = chỗ đặt trứng |
-| `AutoFisher` | Máy câu tự động | Pivot ở đáy; mặt trước (-Z) quay ra nước |
+| `AutoFisher_<Tier>` | Máy câu tự động | Pivot ở đáy; mặt trước (-Z) quay ra nước |
 | `Shopkeeper`, `Merchant` | NPC ở Tool Shop / Market | Pivot ở đáy |
 
 Có model thật thì game dùng ngay, không cần sửa code. Rojo sẽ không xoá những gì bạn bỏ vào `CustomModels`.

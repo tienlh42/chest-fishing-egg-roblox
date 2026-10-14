@@ -1,17 +1,21 @@
 -- ModuleScript: ReplicatedStorage > Models
 -- Cung cấp model cho game. Thứ tự ưu tiên:
---   1. Model thật bạn đặt trong ReplicatedStorage > CustomModels (đúng tên)
+--   1. Model thật trong ReplicatedStorage > CustomModels. Tên game -> tên asset lấy từ trường `Model` trong Config
+--      (cần câu, rương, trứng, pet, ngỗng, máy câu "AutoFisher_<Tier>"); không có thì dùng đúng tên game.
+--      Asset nằm ở Assets/Models/*.rbxmx (Rojo đồng bộ vào CustomModels; chép từ repo roblox-assets bằng tools/prepare_assets.py)
 --   2. Nếu không có -> tự dựng model TẠM (placeholder) bằng Part
 --
--- Tên model cần có (thêm pet/rương/trứng/cần mới trong Config thì đặt model cùng tên):
---   Cần câu: "Basic Rod", "Sturdy Rod", "Pro Rod", "Legend Rod"
---            (phải là Tool, có Part "Handle", nên có Attachment "Tip" ở đầu cần)
+-- Model asset là Model có rig Motor6D + script client nhúng sẵn (animation / hiệu ứng), đổi animation bằng attribute "Anim"
+-- (Models.SetAnim). Bản mẫu trong CustomModels để script TẮT; Models.Get bật lại trên bản sao.
+-- Tên model tạm cần có khi thiếu asset (thêm cần / pet / rương / trứng mới trong Config thì đặt model asset tương ứng):
+--   Cần câu: tên trong Config.Rods (phải là Tool có Part "Handle", hoặc Model rig: Fishing.lua tự bọc thành Tool)
 --   Phao:    "Bobber"
---   Rương:   "Wooden Chest", "Golden Chest", "Diamond Chest"  (Part tên "Lid" sẽ được mở nắp)
---   Trứng:   "Common Egg", "Rare Egg"
---   Pet:     "Cat", "Dog", "Fox", "Dragon", "Phoenix"
---   Plot:    "Incubator" (nên có Attachment "EggPoint" = chỗ đặt trứng), "AutoFisher"
+--   Rương:   tên trong Config.Chests (Part tên "Lid" sẽ được mở nắp)
+--   Trứng:   "<Tier> Egg" (Config.Eggs)
+--   Pet:     tên trong Config.Pet.Stats
+--   Plot:    "Incubator" (nên có Attachment "EggPoint" = chỗ đặt trứng), "AutoFisher" / "AutoFisher_<Tier>"
 --   NPC:     "Shopkeeper", "Merchant"
+--   Ngỗng bảo vệ: "Goose" (xem ghi chú ở hàm buildGoose)
 -- Mặt trước của model = hướng -Z (LookVector). Nhớ đặt PrimaryPart cho Model.
 -- Incubator / AutoFisher / NPC: đặt Pivot ở ĐÁY model (vì được đặt lên mặt bệ/sàn).
 
@@ -31,6 +35,7 @@ local CHESTS = {
 local EGGS = {
 	["Common Egg"] = { Color = Color3.fromRGB(245, 235, 200) },
 	["Rare Egg"] = { Color = Color3.fromRGB(170, 90, 255), Glow = true },
+	["Starter Egg"] = { Color = Color3.fromRGB(255, 190, 90), Glow = true },
 }
 
 local PETS = {
@@ -303,6 +308,37 @@ local function buildNpc(name, spec)
 	return m
 end
 
+-- Ngỗng bảo vệ. Gốc là "HumanoidRootPart" nằm ở tâm (0,0,0), chân cách gốc 2.5 stud (Guard.lua đặt HipHeight cho khớp).
+-- Model thật trong CustomModels cũng cần có Part tên "HumanoidRootPart" làm PrimaryPart và chân chạm đáy cách gốc 2.5 stud.
+local function buildGoose()
+	local m = Instance.new("Model")
+	m.Name = "Goose"
+	local white = Color3.new(1, 1, 1)
+	local orange = Color3.fromRGB(255, 150, 30)
+	local blue = Color3.fromRGB(40, 70, 150)
+
+	local root = newPart(m, "HumanoidRootPart", Vector3.new(2.4, 2, 3.2), nil, white)
+	root.Transparency = 1
+	m.PrimaryPart = root
+
+	newPart(m, "Body", Vector3.new(3, 3, 3), CFrame.new(0, -0.1, 0.2), white, nil, Enum.PartType.Ball)
+	newPart(m, "Vest", Vector3.new(3.1, 1.4, 2.2), CFrame.new(0, 0, 0.2), blue)
+	newPart(m, "Badge", Vector3.new(0.6, 0.6, 0.1), CFrame.new(0.7, 0.3, -0.9), Color3.fromRGB(255, 215, 0), Enum.Material.Metal, Enum.PartType.Ball)
+	newPart(m, "Tail", Vector3.new(0.8, 0.5, 1.2), CFrame.new(0, 0.3, 1.8), white)
+	newPart(m, "Neck", Vector3.new(0.7, 2.2, 0.7), CFrame.new(0, 1.7, -1), white)
+	newPart(m, "Head", Vector3.new(1.3, 1.3, 1.3), CFrame.new(0, 2.8, -1.2), white, nil, Enum.PartType.Ball)
+	newPart(m, "Beak", Vector3.new(0.6, 0.3, 1.1), CFrame.new(0, 2.7, -2.1), orange)
+	for _, x in ipairs({ -0.45, 0.45 }) do
+		newPart(m, "Eye", Vector3.new(0.25, 0.25, 0.25), CFrame.new(x, 3, -1.75), Color3.fromRGB(25, 25, 25), nil, Enum.PartType.Ball)
+		newPart(m, "Leg", Vector3.new(0.3, 1.5, 0.3), CFrame.new(x * 1.3, -1.75, 0), orange)
+		newPart(m, "Foot", Vector3.new(0.9, 0.2, 1), CFrame.new(x * 1.3, -2.4, -0.3), orange)
+	end
+	-- Mũ đồng phục
+	newPart(m, "Cap", Vector3.new(1.6, 0.45, 1.6), CFrame.new(0, 3.6, -1.2), blue)
+	newPart(m, "CapBrim", Vector3.new(1.6, 0.1, 0.6), CFrame.new(0, 3.45, -2), blue)
+	return m
+end
+
 local function buildUnknown(name)
 	local m = Instance.new("Model")
 	m.Name = name
@@ -316,6 +352,7 @@ local builders = {
 	Bobber = buildBobber,
 	Incubator = buildIncubator,
 	AutoFisher = buildAutoFisher,
+	Goose = buildGoose,
 }
 local function register(specs, build)
 	for name, spec in pairs(specs) do
@@ -334,14 +371,41 @@ for _, rod in ipairs(Config.Rods) do
 	end
 end
 
+-- Tên trong game -> tên model trong CustomModels (asset từ repo roblox-assets, xem Assets/Models và tools/prepare_assets.py).
+-- Lấy từ trường `Model` trong Config: cần câu, rương, trứng ("<Tier> Egg"), pet, máy câu ("AutoFisher_<Tier>"), ngỗng ("Goose").
+local aliases = { Goose = Config.Guard.Model }
+for _, rod in ipairs(Config.Rods) do
+	aliases[rod.Name] = rod.Model
+end
+for _, chest in ipairs(Config.Chests) do
+	aliases[chest.Name] = chest.Model
+end
+for tier, egg in pairs(Config.Eggs) do
+	aliases[tier .. " Egg"] = egg.Model
+end
+for petName, stats in pairs(Config.Pet.Stats) do
+	aliases[petName] = stats.Model
+end
+
+-- Model asset có rig Motor6D + script animation (attribute "Anim"), khác model tạm dựng bằng Weld/Anchor
+local function isRigged(model)
+	return model:FindFirstChildWhichIsA("Motor6D", true) ~= nil
+end
+
 -- Trả về 1 bản sao MỚI của model (chưa có Parent)
 function Models.Get(name)
 	local folder = ReplicatedStorage:FindFirstChild("CustomModels")
-	local custom = folder and folder:FindFirstChild(name)
+	local custom = folder and (folder:FindFirstChild(aliases[name] or name) or folder:FindFirstChild(name))
 
 	local model
 	if custom then
 		model = custom:Clone()
+		-- Bản mẫu trong CustomModels để script client TẮT (khỏi chạy trên bản mẫu); bản sao đang hiện thì bật lại
+		for _, d in ipairs(model:GetDescendants()) do
+			if d:IsA("Script") then
+				d.Disabled = false
+			end
+		end
 	elseif builders[name] then
 		model = builders[name]()
 	else
@@ -355,14 +419,42 @@ function Models.Get(name)
 	return model
 end
 
--- Neo cố định toàn bộ Part (dùng cho đồ trang trí đặt trên map)
+-- Neo cố định model (dùng cho đồ trang trí đặt trên map).
+-- Model có rig Motor6D (asset) chỉ neo PrimaryPart: neo hết thì khớp không còn kéo các Part theo animation.
 function Models.Anchor(model)
+	if isRigged(model) then
+		if model.PrimaryPart then
+			model.PrimaryPart.Anchored = true
+		end
+		for _, d in ipairs(model:GetDescendants()) do
+			if d:IsA("Humanoid") then
+				d:Destroy() -- trang trí đứng yên không cần Humanoid (pet / ngỗng asset có sẵn)
+			end
+		end
+		return model
+	end
 	for _, d in ipairs(model:GetDescendants()) do
 		if d:IsA("BasePart") then
 			d.Anchored = true
 		end
 	end
 	return model
+end
+
+-- Đặt model đứng trên mặt phẳng tại `cframe` (đáy bounding box chạm cao độ của cframe, giữ nguyên xoay / vị trí ngang)
+function Models.PlaceOnGround(model, cframe)
+	model:PivotTo(cframe)
+	local box, size = model:GetBoundingBox()
+	local bottom = box.Position.Y - size.Y / 2
+	model:PivotTo(model:GetPivot() + Vector3.new(0, cframe.Position.Y - bottom, 0))
+	return model
+end
+
+-- Đổi animation của model asset (script client trong model đọc attribute "Anim"). Model tạm (không có animation) thì bỏ qua.
+function Models.SetAnim(model, anim)
+	if model and model:GetAttribute("Anim") ~= nil and model:GetAttribute("Anim") ~= anim then
+		model:SetAttribute("Anim", anim)
+	end
 end
 
 return Models

@@ -15,6 +15,7 @@
       },
       "CustomModels": {
         "$className": "Folder",
+        "$path": "Assets/Models",
         "$ignoreUnknownInstances": true
       }
     },

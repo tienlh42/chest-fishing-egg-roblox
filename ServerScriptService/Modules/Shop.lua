@@ -1,8 +1,9 @@
 -- ModuleScript: ServerScriptService > Modules > Shop
--- Tool Shop: mua/chọn cần câu, mua máy câu tự động, mở thêm máy ấp.
+-- Tool Shop: mua/chọn cần câu, mua máy câu tự động, mở thêm máy ấp, nâng cấp túi, trang bị (Dép Tên Lửa).
 
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Config = require(ReplicatedStorage.Config)
+local Bag = require(script.Parent.Bag)
 local Data = require(script.Parent.Data)
 local Fishing = require(script.Parent.Fishing)
 local Plots = require(script.Parent.Plots)
@@ -69,6 +70,41 @@ function Shop.BuyIncubator(player)
 	Data.Update(player)
 	Plots.Refresh(player)
 	return true, "New incubator unlocked at your plot!"
+end
+
+-- Nâng cấp túi: 4 -> 5 -> 6 ô (Config.Bag.Upgrades)
+function Shop.BuyBagUpgrade(player)
+	local profile = Data.Get(player)
+	local upgrade = Config.Bag.Upgrades[(profile.BagLevel or 0) + 1]
+	if not upgrade then
+		return false, "Your bag is already the biggest!"
+	end
+	if not Data.Spend(player, upgrade.Price) then
+		return false, ("Not enough coins (need %d)."):format(upgrade.Price)
+	end
+	profile.BagLevel = (profile.BagLevel or 0) + 1
+	Data.Update(player)
+	Bag.Sync(player)
+	return true, ("Bag upgraded! It now holds %d chests."):format(upgrade.Capacity)
+end
+
+-- Trang bị (Config.Gear): mua 1 lần, có là dùng luôn. Tốc chạy áp ở Sprint.client.lua (đọc profile.Gear)
+function Shop.BuyGear(player, id)
+	local profile = Data.Get(player)
+	local gear = typeof(id) == "string" and Config.Gear[id]
+	if not gear then
+		return false, "Unknown item."
+	end
+	profile.Gear = profile.Gear or {}
+	if profile.Gear[id] then
+		return false, ("You already own %s."):format(gear.Name)
+	end
+	if not Data.Spend(player, gear.Price) then
+		return false, ("Not enough coins (need %d)."):format(gear.Price)
+	end
+	profile.Gear[id] = true
+	Data.Update(player)
+	return true, ("Bought %s! You move %d%% faster."):format(gear.Name, math.floor(gear.SpeedBonus * 100 + 0.5))
 end
 
 -- Nút [E] ở quầy -> mở bảng Shop trên client
