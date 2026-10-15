@@ -39,6 +39,16 @@ function BuildUtil.ball(parent, name, diameter, position, color, material)
 	return p
 end
 
+-- Khối elip (Part + SpecialMesh Sphere, kích thước size), không cản đường
+function BuildUtil.ellipsoid(parent, name, size, cframe, color, material)
+	local p = BuildUtil.block(parent, name, size, cframe, color, material)
+	local mesh = Instance.new("SpecialMesh")
+	mesh.MeshType = Enum.MeshType.Sphere
+	mesh.Parent = p
+	p.CanCollide = false
+	return p
+end
+
 -- Trụ đứng thẳng: cframe = tâm trụ
 function BuildUtil.cylinder(parent, name, height, diameter, cframe, color, material)
 	local p = BuildUtil.block(parent, name, Vector3.new(height, diameter, diameter), cframe * CFrame.Angles(0, 0, math.rad(90)), color, material)

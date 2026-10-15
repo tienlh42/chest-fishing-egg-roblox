@@ -1,5 +1,7 @@
 -- ModuleScript: ServerScriptService > Modules > SafeZone
 -- Vùng an toàn: ngỗng không vào, pet hồi HP, được cất đồ ở Stash.
+-- THEO TỪNG NGƯỜI: hộp quanh mỗi nhà chỉ an toàn cho CHỦ nhà đó (attribute OwnerId của Plot). Sân người khác, kể cả nhà chưa có chủ,
+-- không an toàn (kẻ cướp đứng trong sân nạn nhân vẫn bị ngỗng đuổi). Vùng chung (điểm hồi sinh / Plaza) an toàn cho mọi người.
 -- Nếu map có sẵn Part tên "SafeZone" thì dùng đúng những Part đó. Không có thì tự tạo (vô hình) bao quanh
 -- từng Plot (+ quanh điểm hồi sinh nếu map không có Plaza). Stash nằm trong từng nhà (HouseBuilder dựng, Plots gắn nút [E] cho chủ nhà).
 
@@ -29,8 +31,25 @@ local function addZoneAround(model)
 	addZone(model, cf, Vector3.new(size.X + ZONE_MARGIN, ZONE_HEIGHT, size.Z + ZONE_MARGIN))
 end
 
-function SafeZone.Contains(position)
+-- Plot (Model con trực tiếp của folder "Plots") chứa vùng này, nil nếu là vùng chung
+local function plotOfZone(part)
+	local node = part.Parent
+	while node and node.Parent do
+		if node.Parent.Name == "Plots" then
+			return node
+		end
+		node = node.Parent
+	end
+	return nil
+end
+
+-- `position` có an toàn cho `player` không: trong vùng chung, hoặc trong hộp quanh nhà CỦA player
+function SafeZone.Contains(position, player)
 	for _, part in ipairs(zones) do
+		local plot = plotOfZone(part)
+		if plot and not (player and plot:GetAttribute("OwnerId") == player.UserId) then
+			continue
+		end
 		local p = part.CFrame:PointToObjectSpace(position)
 		local half = part.Size / 2
 		if math.abs(p.X) <= half.X and math.abs(p.Y) <= half.Y and math.abs(p.Z) <= half.Z then
@@ -40,10 +59,25 @@ function SafeZone.Contains(position)
 	return false
 end
 
+-- Plot (Model) có hộp vùng chứa `position`, nil nếu đứng ngoài mọi plot (không phân biệt chủ)
+function SafeZone.PlotAt(position)
+	for _, part in ipairs(zones) do
+		local plot = plotOfZone(part)
+		if plot then
+			local p = part.CFrame:PointToObjectSpace(position)
+			local half = part.Size / 2
+			if math.abs(p.X) <= half.X and math.abs(p.Y) <= half.Y and math.abs(p.Z) <= half.Z then
+				return plot
+			end
+		end
+	end
+	return nil
+end
+
 function SafeZone.IsSafe(player)
 	local character = player.Character
 	local hrp = character and character:FindFirstChild("HumanoidRootPart")
-	return hrp ~= nil and SafeZone.Contains(hrp.Position)
+	return hrp ~= nil and SafeZone.Contains(hrp.Position, player)
 end
 
 function SafeZone.Init(map)

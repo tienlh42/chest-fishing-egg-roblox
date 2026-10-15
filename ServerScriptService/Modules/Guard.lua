@@ -1,5 +1,9 @@
 -- ModuleScript: ServerScriptService > Modules > Guard
--- Ngỗng bảo vệ hồ cấm. Máy trạng thái:
+-- Ngỗng bảo vệ. Ba loại (g.Kind):
+--   Lake    ngỗng hồ cấm (Config.Guard.Count con), tuần quanh hồ, để ý người đang kéo câu / túi có đồ
+--   House   ngỗng nhà: mỗi plot có chủ 1 con, đi vòng quanh sân, bỏ qua chủ nhà, chỉ rượt người "bị truy nã" (hooks.Wanted) trong sân
+--   Police  ngỗng đồn cảnh sát: sinh khi có báo động cướp nhà (Guard.CallPolice), đuổi đúng kẻ cướp, hết giờ / mất dấu thì biến mất
+-- Máy trạng thái:
 --   Patrol      đi qua các điểm tuần tra (Config.Guard.Patrol)
 --   Suspicious  thấy người chơi KHẢ NGHI -> dựng cổ nghi ngờ một chút. Hết giờ mà người đó thôi khả nghi
 --               (đã nhả nút câu) thì chỉ ra chỗ đó xem rồi bỏ qua; vẫn khả nghi thì đuổi
@@ -14,6 +18,7 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Config = require(ReplicatedStorage.Config)
 local Models = require(ReplicatedStorage.Models)
 local Data = require(script.Parent.Data)
+local Loadout = require(script.Parent.Loadout)
 local Pets = require(script.Parent.Pets)
 local Remote = require(script.Parent.Remote)
 local SafeZone = require(script.Parent.SafeZone)
@@ -28,8 +33,11 @@ local AGENT = { AgentRadius = 2.2, AgentHeight = 6, AgentCanJump = false, Costs 
 local Guard = {}
 
 local geese = {}
-local patrolPoints = {}
-local hooks = {} -- OnCaught(player), Suspicion(player) -> "Reeling" | "Loot" | nil
+local patrolPoints = {} -- điểm tuần quanh hồ (ngỗng hồ)
+local hooks = {} -- OnCaught(player), Suspicion(player) -> "Reeling" | "Loot" | nil, Wanted(player, owner) -> bool
+local ready = false -- true khi đã dựng xong ngỗng hồ (terrain sẵn sàng)
+local pendingHouse = {} -- [chủ] = plot: ngỗng nhà chờ dựng khi ready
+local policeStation = nil -- điểm xuất phát của ngỗng đồn
 
 -- ===== Tiện ích =====
 local function flatDistance(a, b)
@@ -84,7 +92,7 @@ local function targetRoot(player)
 	local character = player.Character
 	local hrp = character and character:FindFirstChild("HumanoidRootPart")
 	local humanoid = character and character:FindFirstChildOfClass("Humanoid")
-	if not (hrp and humanoid and humanoid.Health > 0) or SafeZone.Contains(hrp.Position) then
+	if not (hrp and humanoid and humanoid.Health > 0) or SafeZone.Contains(hrp.Position, player) then
 		return nil
 	end
 	return hrp
@@ -130,9 +138,14 @@ local function setState(g, state, target)
 	end
 end
 
-local function nearestPatrolIndex(position)
+-- Các điểm tuần của ngỗng này (hồ: chung; nhà: vòng quanh plot)
+local function pointsOf(g)
+	return g.Points or patrolPoints
+end
+
+local function nearestPatrolIndex(g, position)
 	local best, bestDist = 1, math.huge
-	for i, point in ipairs(patrolPoints) do
+	for i, point in ipairs(pointsOf(g)) do
 		local d = flatDistance(point, position)
 		if d < bestDist then
 			best, bestDist = i, d
@@ -143,7 +156,7 @@ end
 
 local function toPatrol(g)
 	setState(g, "Patrol", nil)
-	g.PatrolIndex = nearestPatrolIndex(g.Root.Position)
+	g.PatrolIndex = nearestPatrolIndex(g, g.Root.Position)
 	g.PointAt = os.clock()
 	g.WaitUntil = nil
 end
@@ -188,12 +201,40 @@ local function suspicionRange(player)
 		return cfg.SightRange
 	end
 	local level = hooks.Suspicion(player)
+	local mult = Loadout.Get(player).SightMult -- perk cần Fox: ngỗng nhìn kém xa hơn
 	if level == "Reeling" then
-		return cfg.SightRange
+		return cfg.SightRange * mult
 	elseif level == "Loot" then
-		return cfg.LootSightRange
+		return cfg.LootSightRange * mult
 	end
 	return nil
+end
+
+-- Ngỗng nhà: người bị truy nã trong sân nhà này (không phải chủ). Biết ngay, không cần nhìn thấy
+local function findWanted(g)
+	if not hooks.Wanted then
+		return nil
+	end
+	for _, player in ipairs(Players:GetPlayers()) do
+		local hrp = player ~= g.Owner and targetRoot(player)
+		if hrp and flatDistance(hrp.Position, g.Home) <= cfg.House.Leash and hooks.Wanted(player, g.Owner) then
+			return player, hrp
+		end
+	end
+	return nil
+end
+
+-- Ngỗng nhà phát hiện kẻ bị truy nã thì đuổi luôn
+local function chaseWanted(g, now)
+	local player, hrp = findWanted(g)
+	if not player then
+		return false
+	end
+	g.LastSeen = hrp.Position
+	g.LastSeenAt = now + cfg.ReturnGrace
+	say(g, "THIEF! STOP RIGHT THERE!", 2)
+	setState(g, "Chase", player)
+	return true
 end
 
 local function findVisiblePlayer(g)
@@ -280,9 +321,13 @@ end
 
 -- ===== Từng trạng thái =====
 local function stepPatrol(g, now)
-	g.Speed = cfg.PatrolSpeed
+	g.Speed = g.Kind == "House" and cfg.House.PatrolSpeed or cfg.PatrolSpeed
 	g.Direct = false
-	local seen = findVisiblePlayer(g)
+	local points = pointsOf(g)
+	if g.Kind == "House" and chaseWanted(g, now) then
+		return
+	end
+	local seen = g.Kind == "Lake" and findVisiblePlayer(g)
 	if seen then
 		local hrp = targetRoot(seen)
 		g.LastSeen = hrp.Position
@@ -295,12 +340,12 @@ local function stepPatrol(g, now)
 		g.Dest = nil
 		if now >= g.WaitUntil then
 			g.WaitUntil = nil
-			g.PatrolIndex = g.PatrolIndex % #patrolPoints + 1
+			g.PatrolIndex = g.PatrolIndex % #points + 1
 			g.PointAt = now
 		end
 		return
 	end
-	local point = patrolPoints[g.PatrolIndex]
+	local point = points[g.PatrolIndex]
 	g.Dest = point
 	-- Tới nơi, hoặc đi quá lâu mà chưa tới (điểm bị cây chắn) thì nghỉ rồi sang điểm khác
 	if flatDistance(g.Root.Position, point) < 4 or now - g.PointAt > 30 then
@@ -341,14 +386,15 @@ local function fight(g, player, hrp, dt, now)
 	if g.StunUntil > now then
 		return
 	end
+	local perk = Loadout.Get(player) -- perk pet: StunEvery, StunTime, DamageTaken
 	g.FightTime += dt
-	if g.FightTime >= cfg.StunEvery then
+	if g.FightTime >= perk.StunEvery then
 		g.FightTime = 0
-		g.StunUntil = now + cfg.StunTime
+		g.StunUntil = now + perk.StunTime
 		say(g, "Honk!!", 1)
 		return
 	end
-	Pets.Hit(player, cfg.PetDamage * dt)
+	Pets.Hit(player, cfg.PetDamage * perk.DamageTaken * dt)
 end
 
 local function stepChase(g, now, dt)
@@ -367,12 +413,20 @@ local function stepChase(g, now, dt)
 		return
 	end
 
+	-- Ngỗng nhà không bám quá xa nhà (ngỗng đồn tiếp quản)
+	if g.Kind == "House" and flatDistance(g.Root.Position, g.Home) > cfg.House.Leash then
+		say(g, "Not leaving my yard!", 2)
+		toPatrol(g)
+		g.Dest = nil
+		return
+	end
+
 	local distance = (hrp.Position - g.Root.Position).Magnitude
 	local visible = distance <= cfg.AttackRange or canSee(g, hrp)
 	if visible then
 		g.LastSeen = hrp.Position
 		g.LastSeenAt = now
-	elseif now - g.LastSeenAt > cfg.LoseTime then
+	elseif now - g.LastSeenAt > cfg.LoseTime * Loadout.Get(player).LoseTimeMult then
 		g.SearchPos = g.LastSeen
 		setState(g, "Search", nil)
 		return
@@ -404,7 +458,10 @@ end
 local function stepSearch(g, now)
 	g.Speed = cfg.PatrolSpeed
 	g.Direct = false
-	local seen = findVisiblePlayer(g)
+	if g.Kind == "House" and chaseWanted(g, now) then
+		return
+	end
+	local seen = g.Kind == "Lake" and findVisiblePlayer(g)
 	if seen then
 		g.LastSeen = targetRoot(seen).Position
 		say(g, "Honk?", 1.5)
@@ -467,7 +524,7 @@ local steps = {
 }
 
 -- ===== Dựng ngỗng =====
-local function spawnGoose(position, patrolIndex)
+local function spawnGoose(position, patrolIndex, kind, extra)
 	local model = Models.Get("Goose")
 	local root = model.PrimaryPart
 	root.Name = "HumanoidRootPart"
@@ -517,7 +574,7 @@ local function spawnGoose(position, patrolIndex)
 	label.Parent = gui
 	gui.Parent = root
 
-	model.Name = "Guard Goose"
+	model.Name = kind == "House" and "House Goose" or kind == "Police" and "Police Goose" or "Guard Goose"
 	model:PivotTo(CFrame.new(position + Vector3.new(0, 3, 0)))
 	model.Parent = workspace
 	root:SetNetworkOwner(nil) -- server tự tính vật lý cho ngỗng
@@ -536,7 +593,11 @@ local function spawnGoose(position, patrolIndex)
 		StunUntil = 0,
 		FightTime = 0,
 		LastSeenAt = 0,
+		Kind = kind or "Lake",
 	}
+	for key, value in pairs(extra or {}) do
+		g[key] = value
+	end
 	table.insert(geese, g)
 	return g
 end
@@ -546,7 +607,7 @@ end
 -- Tiếng động tại `position`: ngỗng đang rảnh trong bán kính sẽ ra kiểm tra
 function Guard.Noise(position, radius)
 	for _, g in ipairs(geese) do
-		if (g.State == "Patrol" or g.State == "Search") and (g.Root.Position - position).Magnitude <= radius then
+		if g.Kind == "Lake" and (g.State == "Patrol" or g.State == "Search") and (g.Root.Position - position).Magnitude <= radius then
 			if g.State == "Patrol" then
 				say(g, "Honk?", 1.5)
 				setState(g, "Search", nil)
@@ -561,7 +622,9 @@ end
 function Guard.Positions()
 	local list = {}
 	for _, g in ipairs(geese) do
-		table.insert(list, { Position = g.Root.Position, Look = g.Root.CFrame.LookVector, State = g.State })
+		if g.Kind == "Lake" then
+			table.insert(list, { Position = g.Root.Position, Look = g.Root.CFrame.LookVector, State = g.State })
+		end
 	end
 	return list
 end
@@ -576,7 +639,7 @@ function Guard.Recall(player, position)
 	local called = false
 	local now = os.clock()
 	for _, g in ipairs(geese) do
-		local idle = g.State == "Patrol" or g.State == "Search" or g.State == "Suspicious"
+		local idle = g.Kind == "Lake" and (g.State == "Patrol" or g.State == "Search" or g.State == "Suspicious")
 		if idle and flatDistance(g.Root.Position, position) <= cfg.ReturnRange then
 			g.LastSeen = hrp.Position
 			g.LastSeenAt = now + cfg.ReturnGrace
@@ -586,6 +649,68 @@ function Guard.Recall(player, position)
 		end
 	end
 	return called
+end
+
+-- Dựng ngỗng nhà cho plot của `owner` (đi vòng tròn quanh tâm plot). Gọi lúc cấp plot; đợi nếu hệ thống chưa sẵn sàng
+local function buildHouseGoose(owner, plot)
+	local center = plot:GetPivot().Position
+	local points = {}
+	for i = 1, cfg.House.Points do
+		local angle = (i - 1) / cfg.House.Points * math.pi * 2
+		points[i] = groundAt(center + Vector3.new(math.cos(angle), 0, math.sin(angle)) * cfg.House.Radius)
+	end
+	spawnGoose(points[1], 1, "House", { Owner = owner, Home = center, Points = points })
+end
+
+function Guard.SpawnHouse(owner, plot)
+	if not cfg.Enabled then
+		return
+	end
+	if ready then
+		buildHouseGoose(owner, plot)
+	else
+		pendingHouse[owner] = plot
+	end
+end
+
+local function despawn(g)
+	if g.Target then
+		Pets.Unshield(g.Target)
+		alertClient(g.Target, "None")
+	end
+	g.Model:Destroy()
+	table.remove(geese, table.find(geese, g))
+end
+
+function Guard.RemoveHouse(owner)
+	pendingHouse[owner] = nil
+	for _, g in ipairs(table.clone(geese)) do
+		if g.Kind == "House" and g.Owner == owner then
+			despawn(g)
+		end
+	end
+end
+
+-- Báo động cướp nhà: gọi ngỗng đồn cảnh sát đuổi `thief` (tối đa cfg.Police.MaxPerHeist con cùng đuổi người đó)
+function Guard.CallPolice(thief)
+	local hrp = targetRoot(thief)
+	if not (ready and hrp and policeStation) then
+		return
+	end
+	local count = 0
+	for _, g in ipairs(geese) do
+		if g.Kind == "Police" and g.Chasing == thief then
+			count += 1
+		end
+	end
+	if count >= cfg.Police.MaxPerHeist then
+		return
+	end
+	local g = spawnGoose(policeStation + Vector3.new(count * 4, 0, 0), 1, "Police", { Chasing = thief, BornAt = os.clock() })
+	g.LastSeen = hrp.Position
+	g.LastSeenAt = os.clock() + cfg.Police.Lifetime / 3 -- đủ thời gian chạy từ đồn tới
+	say(g, "Police! Stop thief!", 3)
+	setState(g, "Chase", thief)
 end
 
 function Guard.IsChasing(player)
@@ -599,7 +724,7 @@ end
 
 -- hooks.OnCaught(player): gọi khi ngỗng bắt được người chơi
 -- hooks.Suspicion(player): "Reeling" (đang kéo câu) | "Loot" (túi có đồ) | nil (người qua đường)
-function Guard.Init(_, callbacks)
+function Guard.Init(map, callbacks)
 	hooks = callbacks or {}
 	if not cfg.Enabled or #cfg.Patrol == 0 then
 		return
@@ -612,7 +737,15 @@ function Guard.Init(_, callbacks)
 		end
 		for i = 1, cfg.Count do
 			local index = math.floor((i - 1) * #patrolPoints / cfg.Count) + 1
-			spawnGoose(patrolPoints[index], index)
+			spawnGoose(patrolPoints[index], index, "Lake")
+		end
+		-- Đồn cảnh sát: cạnh điểm hồi sinh (vùng chung), ngỗng đồn xuất phát từ đây
+		local spawn = map and map:FindFirstChild("Spawn", true)
+		policeStation = groundAt(spawn and spawn.Position + Vector3.new(10, 0, 10) or patrolPoints[1])
+		ready = true
+		for owner, plot in pairs(pendingHouse) do
+			pendingHouse[owner] = nil
+			buildHouseGoose(owner, plot)
 		end
 
 		local last = os.clock()
@@ -621,8 +754,13 @@ function Guard.Init(_, callbacks)
 			local now = os.clock()
 			local dt = now - last
 			last = now
-			for _, g in ipairs(geese) do
+			for _, g in ipairs(table.clone(geese)) do
 				local ok, err = pcall(function()
+					-- Ngỗng đồn: hết giờ hoặc không còn đuổi ai thì biến mất
+					if g.Kind == "Police" and (now - g.BornAt > cfg.Police.Lifetime or (g.State ~= "Chase" and g.State ~= "Suspicious")) then
+						despawn(g)
+						return
+					end
 					rescueFromWater(g)
 					steps[g.State](g, now, dt)
 					follow(g)

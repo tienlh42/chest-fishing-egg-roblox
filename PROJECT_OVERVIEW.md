@@ -1,6 +1,6 @@
 # Tổng quan dự án: Chest Fishing & Eggs ("Hồ Không Cho Câu")
 
-> Đọc file này **đầu tiên** (người mới / AI mới). Cập nhật lần cuối: 14/10/2026 (#23).
+> Đọc file này **đầu tiên** (người mới / AI mới). Cập nhật lần cuối: 15/10/2026 (#39). Việc cần làm: `TASKS.md`.
 > Lịch sử thay đổi xem `DEVLOG.md`. Thiết kế game xem 2 file `GDD_*.md`.
 
 ---
@@ -50,6 +50,8 @@ ServerScriptService/
     ParkBuilder.lua     Terrain + hồ + lối gạch/lan can/đèn + công viên + đường vòng
     HouseBuilder.lua    1 plot = nhà gỗ (vào được) + Stash + ổ pet + kệ trưng bày + hàng rào + chuồng ấp + ao
     BuildUtil.lua       Hàm dựng Part dùng chung (block, wedge, tree, bench, lamp...)
+    IncubatorBuilder.lua  Model máy ấp "Tổ Ấm" (hoạt ảnh: IncubatorAnimator.client.lua)
+    ShopBuilder.lua     Quảng trường Tool Shop + Market sát nhau, người bán vịt / mèo
     Plots.lua           Cấp plot, dựng máy ấp/máy câu theo dữ liệu, nút [E], dịch chuyển về nhà
     Tutorial.lua        Hướng dẫn người mới 3 bước (profile.Tutorial), Reed Egg tặng trong Data.Load
     House.lua           Đồ chức năng trong nhà: ổ pet (hồi nhanh), kệ trưng bày pet, quà hằng ngày (đang tắt)
@@ -57,7 +59,10 @@ ServerScriptService/
     SafeZone.lua        Vùng an toàn (hộp quanh từng nhà + quanh Spawn)
     FishingSpots.lua    6 điểm câu trên hồ: rương ra ngẫu nhiên phía trước ngỗng (tối đa 3), 1 người/điểm, ngỗng quay lại đuổi nếu câu ngay sau khi nó đi ngang
     Fishing.lua         Câu giữ nút + câu lén (tạm dừng), điểm rơi phao do server tính, phát cần câu
-    Bag.lua             Túi tạm 4 ô, cất vào Stash (lưu xong mới cộng), mất khi bị bắt/chết
+    Bag.lua             Túi tạm 4 ô (chỉ tên rương), cất vào kho nhà (lưu xong mới tính), mất khi bị bắt/chết
+    Loadout.lua         Gộp perk cần + pet thành 1 bảng chỉ số (Loadout.Get): Fishing, Guard đọc từ đây
+    Robbery.lua         Cướp nhà: [F] Pick lock, chìa, lấy món có khóa theo plot, đồng hồ 60 giây trong sân người khác
+    Stash.lua           Kho nhà: nút [E] Stash, mở rương (tung coins / trứng lúc mở), Action OpenChest / OpenAllChests
     Guard.lua           Ngỗng bảo vệ: Patrol / Suspicious / Chase / Search / Pause, pathfinding
     Pets.lua            Pet đi theo, HP pet, chặn ngỗng, hồi HP ở nhà
     NoSwim.lua          Cấm bơi: rơi xuống nước thì đưa về chỗ đứng vững gần nhất
@@ -79,7 +84,7 @@ Assets/Models/*.rbxmx       29 model asset (cần, pet, trứng, rương, máy c
 | Remote | Hướng | Dùng cho |
 |---|---|---|
 | `Cast` (RemoteEvent) | client → server | `"Down"` = nhấn giữ câu / kéo tiếp, `"Up"` = nhả (tạm dừng) |
-| `Action` (RemoteFunction) | client → server, trả `(ok, message)` | `GetData`, `BuyRod`, `EquipRod`, `EquipPet(id)`, `BuyAutoFisher`, `BuyIncubator`, `StartHatch`, `SellEgg`, `SellPet(id)`, `BuyBagUpgrade`, `BuyGear`, `Teleport("Lake" | "Shop" | "Plot")` |
+| `Action` (RemoteFunction) | client → server, trả `(ok, message)` | `GetData`, `BuyRod`, `EquipRod`, `EquipPet(id)`, `BuyAutoFisher`, `OpenChest(tên, all)`, `OpenAllChests`, `BuyKey(n)`, `BuyLock`, `RobTake(ownerId, target, key)`, `BuyIncubator`, `StartHatch`, `SellEgg`, `SellPet(id)`, `BuyBagUpgrade`, `BuyGear`, `Teleport("Lake" | "Shop" | "Plot")` |
 | `Sync` (RemoteEvent) | server → client | Gửi nguyên profile sau mỗi `Data.Update` |
 | `Notify` (RemoteEvent) | server → client | Dòng thông báo (toast 3 giây) |
 | `Effect` (RemoteEvent) | server → client | `CastStart`, `CastPause`, `CastResume`, `CastFail`, `Catch`, `Bag`, `Deposit`, `Alert` (ngỗng nghi ngờ/đuổi), `PetHP`, `PetDown`, `Hatched`, `Collect`, `OpenPanel` (client phát âm thanh theo các sự kiện này) |
@@ -127,7 +132,11 @@ Assets/Models/*.rbxmx       29 model asset (cần, pet, trứng, rương, máy c
 
 **Dịch chuyển (`Teleports.lua`, `Config.Teleport`):** chỉ bằng **nút bấm** trong dock bên phải màn hình (HOME / LAKE / SHOP), **đều tốn tiền**: **Lake (20)** đáp xuống `LakeArrival` gần nhà nhất; **Tool Shop (10)** đáp xuống `ShopArrival`; **My Plot (10)** về thảm Home. Tool Shop và My Plot bị chặn khi túi có đồ hoặc đang bị đuổi; Lake bị chặn khi đang bị đuổi. Cooldown 3 giây. Bị bắt, hồi sinh, mới vào game thì về nhà miễn phí.
 
-**Túi & Stash (`Bag.lua`):** 4 món (nâng lên 5, rồi 6 ở **Tool Shop**: 300 / 1200 coins), không lưu DataStore. Cất ở Stash (ngoài sân trước, cạnh lối đá gần cổng) thì cộng vào profile và **lưu**. Lưu lỗi thì hoàn lại, đồ vẫn trong túi. Túi có đồ thì không được dịch chuyển về nhà.
+**Túi & Stash (`Bag.lua`):** 4 món (nâng lên 5, rồi 6 ở **Tool Shop**: 300 / 1200 coins), không lưu DataStore. Túi chỉ giữ **tên rương** (chưa tung coins / trứng). Bấm [E] ở Stash (ngoài sân trước, cạnh lối đá gần cổng): rương trong túi chuyển vào **kho nhà** `profile.Chests = { [tên rương] = số lượng }` (không giới hạn ô) và **lưu**, lưu lỗi thì hoàn lại, đồ vẫn trong túi. Túi có đồ thì không được dịch chuyển về nhà.
+
+**Cướp nhà (`Robbery.lua`, `Config.Robbery`):** người khác bấm [F] "Pick lock" ở Stash / máy câu của chủ nhà online, tiêu 1 Chìa vạn năng (mua ở Tool Shop, `profile.Keys`), mở 50% (giảm theo khóa cửa). Mở được thì chọn món (rương / trứng / rương của máy), giữ 3 giây (server đợi), món vào túi kẻ cướp. Lần thử đầu báo động chủ nhà; ở trong sân người khác quá 60 giây thì bị xử như bị bắt (tạm, chờ ngỗng nhà); bị bắt / chết / thoát game thì món cướp trả về kho chủ nhà; lấy được món đầu thì chủ nhà có khiên 10 phút. Vùng an toàn chỉ tính nhà của chính mình. **Ngỗng:** ngoài ngỗng hồ, mỗi nhà có chủ có 1 **ngỗng nhà** (đi vòng sân, chỉ rượt kẻ bị truy nã: đã thử khóa hoặc quá 60 giây trong sân), và báo động cướp gọi tối đa 3 **ngỗng đồn** đuổi kẻ cướp. **Khóa cửa** 3 cấp (Tool Shop, `BuyLock`) giảm tỉ lệ mở của chìa. **Perk** của cần / pet (`Config.Rods[].Perk`, `Config.Pet.Stats[].Perk`) áp qua `Loadout.lua`.
+
+**Kho nhà & mở rương (`Stash.lua`, `Config.Stash`):** sau khi cất, bảng **Stash** hiện rương theo cấp với nút Open / Open all (Action `OpenChest(tên, all)`, `OpenAllChests`). Coins và trứng **tung lúc mở** (`Fishing.GiveChest`), phải đứng trong 40 stud quanh Stash của mình. Rương từ ao nhà và máy câu vẫn mở ngay vào tài khoản.
 
 **Pet (`Pets.lua`, `Config.Pet.Stats`):** mỗi loại pet có HP riêng (bảng trên). Mỗi pet là **bản ghi riêng** `profile.Pets = { { Id, Name, Durability } }` (tạo bằng `Data.NewPet`), pet đi theo là `profile.EquippedPet` (Id); chọn pet trong **Bag** (bấm ô pet, Action `EquipPet`, không đổi được khi đang bị ngỗng đuổi). Nở pet đầu tiên khi chưa equip gì thì tự equip. Animation đổi theo việc đang làm (Idle / Walk / Run, Attack khi chặn ngỗng, Happy khi vừa hiện). HP chỉ tồn tại trong phiên chơi (mỗi pet giữ HP riêng), hồi đầy sau 40 giây khi đứng ở nhà, nhanh gấp 2.5 lần khi đứng cạnh **ổ pet**; chỉ pet đang equip mới hồi.
 
@@ -141,7 +150,7 @@ Assets/Models/*.rbxmx       29 model asset (cần, pet, trứng, rương, máy c
 
 **Âm thanh (`Config.Sounds`, `Effects.client.lua`):** ngỗng Honk / còi, tõm khi hụt, nhận rương, tiếng xu, trứng nở, pet yếu.
 
-**Máy câu tự động (`AutoFishers.lua`, `Config.AutoFisher`):** **ổ** và **máy** tách nhau. 5 ổ (`PedestalPrices` 0 / 400 / 1200 / 3000 / 7000, mở một lần, `profile.FisherSlots`). Máy là món tiêu hao: **mua thẳng tier** vào ổ trống (Common 300, Rare 1000, Epic 3500, Legendary 10000, Mythic 30000; asset `AutoFisher_<Tier>`). Mỗi tier có `Interval` (180 / 160 / 140 / 120 / 100 giây ra 1 rương), `Capacity` (kho 10 / 11 / 13 / 15 / 18, đầy sau ~30 phút, tích cả offline), `Durability` (số rương làm ra được: 120 / 200 / 450 / 1000 / 2500) và `Odds` (chỉ ra tới rương Purple). Dữ liệu: `profile.AutoFishers[ổ] = { Tier, Durability, Last, Stored }`. Bấm [E] ở máy để mở hết rương; độ bền trừ đúng số rương thu, hết thì máy biến mất (ổ còn lại), còn 20% thì báo. **Nâng tier tại chỗ** (Action `UpgradeAutoFisher`) = trả chênh lệch giá, giữ kho đã tích, độ bền về đầy (cách duy nhất để "sửa"). Máy sắp hỏng (độ bền < kho) chỉ tích tối đa bằng độ bền còn lại. Mua / mở ổ / nâng ở **Tool Shop** (Action `BuyFisherSlot`, `BuyAutoFisher(tierIndex)`, `UpgradeAutoFisher(slot)`).
+**Máy câu tự động (`AutoFishers.lua`, `Config.AutoFisher`):** **ổ** và **máy** tách nhau. 5 ổ (`PedestalPrices` 0 / 400 / 1200 / 3000 / 7000, mở một lần, `profile.FisherSlots`). Máy là món tiêu hao: **mua thẳng tier** vào ổ trống (Common 300, Rare 1000, Epic 3500, Legendary 10000, Mythic 30000; asset `AutoFisher_<Tier>`). Mỗi tier có `Interval` (180 / 160 / 140 / 120 / 100 giây ra 1 rương), `Capacity` (kho 10 / 11 / 13 / 15 / 18, đầy sau ~30 phút, tích cả offline), `Durability` (số rương làm ra được: 120 / 200 / 450 / 1000 / 2500) và `Odds` (chỉ ra tới rương Purple). Dữ liệu: `profile.AutoFishers[ổ] = { Tier, Durability, Last, Stored }`. Bấm [E] ở máy để mở hết rương; độ bền trừ đúng số rương thu, hết thì máy biến mất (ổ còn lại), còn 20% thì báo. **Nâng tier tại chỗ** (Action `UpgradeAutoFisher`) = trả chênh lệch giá, giữ kho đã tích, độ bền về đầy (cách duy nhất để "sửa"). Máy sắp hỏng (độ bền < kho) chỉ tích tối đa bằng độ bền còn lại. Mua / mở ổ / nâng **ở nhà** (nút [E] trên bệ, [G] trên máy: bảng Build; Action `BuyFisherSlot`, `BuyAutoFisher(tierIndex, slot)`, `UpgradeAutoFisher(slot)`, phải đứng trong sân nhà mình `Plots.IsHome`). Tool Shop chỉ bán đồ (cần, túi, chìa, giày).
 
 **Kinh tế:** 6 cần câu (asset `Rod_*`: Duckling 0, Catfish 150, Turtle 500, Fox 1800, Lucky Cat 6000, Rainbow Dragon 18000; `Odds` và `Speed` trong `Config.Rods`), **Dép Tên Lửa** (2000 coins, +10% tốc độ, `Config.Gear`), **máy câu tự động** (xem mục dưới: 5 ổ + 5 tier, mua thẳng tier, có độ bền), máy ấp (tối đa 4), bán trứng và pet. **Dev mode:** chạy trong Studio có 1 tỷ coins (`Config.Dev`).
 

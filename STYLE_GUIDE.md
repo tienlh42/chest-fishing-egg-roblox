@@ -15,7 +15,7 @@
 
 ### 1.1 Yếu tố nhập vai
 
-Mỗi model thuộc đúng một trong hai nhóm dưới đây, để thế giới game có chung một mạch hài: thú thì làm việc như người, đồ vật thì sống như thú.
+Mỗi model thuộc đúng một trong hai nhóm dưới đây, để thế giới game có chung một mạch hài: thú thì làm việc như người, đồ vật thì sống như thú.               
 
 | Nhóm | Yếu tố bắt buộc | Cách thể hiện |
 | --- | --- | --- |

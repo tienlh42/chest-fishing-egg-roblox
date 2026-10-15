@@ -151,7 +151,9 @@ Nguyên tắc thiết kế: rương hiếm kéo lâu hơn, nên **gây tiếng �
 - **[ĐÃ CHỐT]** Ngỗng bắt = mất hết đồ trong túi (giữ luật hiện tại).
 - **[ĐỀ XUẤT]** Giữ nâng cấp túi (5, 6 ô) nếu người dùng không bảo bỏ. Túi cũng là giới hạn số món cướp được trong một lượt.
 
-### 5.2 Stash thành kho rương [ĐÃ CHỐT]
+### 5.2 Stash thành kho rương [ĐÃ CÓ từ 15/10/2026, DEVLOG #39]
+
+> Đã code: `profile.Chests = { [tên rương] = số lượng }`, `Bag.Deposit` chỉ chuyển rương vào kho, `Stash.lua` mở rương (tung lúc mở, mở tức thì, phải đứng gần Stash). Rương từ ao và máy câu vẫn mở ngay. Phần mô tả dưới là thiết kế gốc.
 
 Hiện `Bag.Deposit` cộng ngay `coins` và `eggs` vào profile rồi lưu (nếu lưu lỗi thì hoàn lại). Thiết kế mới:
 
@@ -225,6 +227,8 @@ Chỗ tiêu dự kiến **[ĐỀ XUẤT]**: cần cấp cao, nâng cấp máy c�
 ---
 
 ## 8. Ngỗng
+
+> **15/10/2026 (DEVLOG #42):** đã code ngỗng nhà (vòng sân, chỉ rượt kẻ bị truy nã), ngỗng đồn (gọi khi báo động, tối đa 3). Chưa code: thang nghi ngờ đầy đủ (8.3), công trình đồn.
 
 ### 8.1 Ba loại ngỗng [ĐÃ CHỐT]
 

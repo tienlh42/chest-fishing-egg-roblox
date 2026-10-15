@@ -1,15 +1,14 @@
 -- ModuleScript: ServerScriptService > Modules > HouseBuilder
--- Dựng 1 plot = lô nhà dân: nhà gỗ vào được bên trong (có nội thất), hàng rào gỗ trắng, hộp thư ghi tên,
--- chuồng ấp trứng gỗ, ao vườn nước thật (Terrain) + 4 ô máy câu.
--- Toạ độ trong file là toạ độ CỤC BỘ của plot: tâm (0,0,0), cổng ở -Z (quay ra đường), sân sau ở +Z.
+-- Dựng 1 plot = lô nhà dân (thiết kế HOME_DESIGN.md): nhà gỗ vào được bên trong (có nội thất + PHÒNG RƯƠNG), biển tên TO ĐÙNG trên nóc,
+-- hiên kính ấp trứng (4 bệ máy ấp), BẾN GỖ sát SÔNG ở sân sau (5 bệ máy câu). Sông vòng quanh các nhà do ParkBuilder.BuildRiver dựng.
+-- Toạ độ trong file là toạ độ CỤC BỘ của plot: tâm (0,0,0), cổng ở -Z (quay ra đường), sân sau ở +Z (quay ra sông).
 --
--- Tên mà code khác cần (KHÔNG đổi): Home, Sign, Stash, PetBed, TrophyShelf, TrophySlot1..6,
--- IncubatorSlot1..4, FisherSlot1..5, Water (ao).
+-- Tên mà code khác cần (KHÔNG đổi): Home, Sign (biển tên trên nóc), DoorLock, Stash (rương lớn trong nhà), VaultSlot1..5 (chỗ trưng rương theo hạng),
+-- PetBed, TrophyShelf, TrophySlot1..6, IncubatorSlot1..4, FisherSlot1..5, Water (đoạn sông trước bến: câu tay).
 
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Models = require(ReplicatedStorage.Models)
 local BuildUtil = require(script.Parent.BuildUtil)
-local TERRAIN_SHIFT = require(script.Parent.ParkBuilder).TerrainShift
 
 local block, ball, cylinder, wedge, marker, decor = BuildUtil.block, BuildUtil.ball, BuildUtil.cylinder, BuildUtil.wedge, BuildUtil.marker, BuildUtil.decor
 local C = BuildUtil.Colors
@@ -65,7 +64,6 @@ local function buildFence(plot, cf)
 	local e = HALF - 0.5
 	fenceLine(fence, cf, Vector3.new(-e, 0, -e), Vector3.new(e, 0, -e), Vector3.new(0, 0, -e), 10) -- trước (có cổng)
 	fenceLine(fence, cf, Vector3.new(e, 0, -e), Vector3.new(e, 0, e))
-	fenceLine(fence, cf, Vector3.new(e, 0, e), Vector3.new(-e, 0, e))
 	fenceLine(fence, cf, Vector3.new(-e, 0, e), Vector3.new(-e, 0, -e))
 	for _, x in ipairs({ -5.4, 5.4 }) do
 		block(fence, "GatePost", Vector3.new(0.9, 4, 0.9), cf * CFrame.new(x, 2, -e), TRIM, Enum.Material.Wood)
@@ -238,68 +236,214 @@ local function buildHouse(plot, cf, rng)
 	house.Parent = plot
 end
 
--- ===== Chuồng ấp trứng (gỗ, mái nghiêng, mở mặt trước) =====
+-- ===== Hiên kính ấp trứng: 4 bệ máy ấp (IncubatorSlot1..4), tường + mái kính, rơm trải sàn =====
 local function buildHatchery(plot, cf)
 	local shed = Instance.new("Model")
 	shed.Name = "Hatchery"
 	local cx, cz = -28, 25 -- x -42..-14, z 10..40
 	local w, d = 28, 30
+	local glassColor = Color3.fromRGB(190, 230, 255)
 	block(shed, "Straw", Vector3.new(w, 0.4, d), cf * CFrame.new(cx, 0.2, cz), Color3.fromRGB(225, 195, 115), Enum.Material.Fabric)
-	block(shed, "BackWall", Vector3.new(w, 8, 0.8), cf * CFrame.new(cx, 4, cz + d / 2 - 0.4), C.Wood, Enum.Material.WoodPlanks)
-	for _, s in ipairs({ -1, 1 }) do
-		block(shed, "SideWall", Vector3.new(0.8, 8, d), cf * CFrame.new(cx + s * (w / 2 - 0.4), 4, cz), C.Wood, Enum.Material.WoodPlanks)
-		block(shed, "FrontPost", Vector3.new(0.8, 9.6, 0.8), cf * CFrame.new(cx + s * (w / 2 - 0.4), 4.8, cz - d / 2 + 0.4), C.DarkWood, Enum.Material.Wood)
+	-- cột góc + xà mái
+	for _, sx in ipairs({ -1, 1 }) do
+		for _, z in ipairs({ cz - d / 2 + 0.4, cz + d / 2 - 0.4 }) do
+			block(shed, "Post", Vector3.new(0.9, 9.6, 0.9), cf * CFrame.new(cx + sx * (w / 2 - 0.45), 4.8, z), C.DarkWood, Enum.Material.Wood)
+		end
 	end
-	-- mái dốc nhẹ từ trước (cao) ra sau (thấp)
-	local roof = block(shed, "Roof", Vector3.new(w + 2, 0.5, d + 2), cf * CFrame.new(cx, 9, cz) * CFrame.Angles(math.rad(2.7), 0, 0), ROOF, Enum.Material.Wood)
-	BuildUtil.billboard(roof, "HATCHERY", 3)
-	-- 4 bệ máy ấp (2 hàng)
+	-- tường kính: sau + 2 bên (chân tường gỗ thấp)
+	local function glassWall(size, pos)
+		local pane = block(shed, "GlassWall", size, cf * CFrame.new(pos), glassColor, Enum.Material.Glass)
+		pane.Transparency = 0.55
+		pane.CanCollide = true
+	end
+	glassWall(Vector3.new(w, 7, 0.3), Vector3.new(cx, 5.2, cz + d / 2 - 0.2))
+	block(shed, "BackSkirt", Vector3.new(w, 1.6, 0.7), cf * CFrame.new(cx, 0.8, cz + d / 2 - 0.35), C.Wood, Enum.Material.WoodPlanks)
+	for _, sx in ipairs({ -1, 1 }) do
+		glassWall(Vector3.new(0.3, 7, d), Vector3.new(cx + sx * (w / 2 - 0.2), 5.2, cz))
+		block(shed, "SideSkirt", Vector3.new(0.7, 1.6, d), cf * CFrame.new(cx + sx * (w / 2 - 0.35), 0.8, cz), C.Wood, Enum.Material.WoodPlanks)
+	end
+	-- mái kính dốc nhẹ từ trước (cao) ra sau (thấp) + dầm gỗ
+	local roof = block(shed, "Roof", Vector3.new(w + 2, 0.3, d + 2), cf * CFrame.new(cx, 9.2, cz) * CFrame.Angles(math.rad(2.7), 0, 0), glassColor, Enum.Material.Glass)
+	roof.Transparency = 0.5
+	for i = 0, 4 do
+		block(shed, "Beam", Vector3.new(w + 2, 0.5, 0.6), cf * CFrame.new(cx, 9.5, cz - d / 2 + 1 + i * (d - 2) / 4) * CFrame.Angles(math.rad(2.7), 0, 0), C.DarkWood, Enum.Material.Wood)
+	end
+	BuildUtil.billboard(roof, "NURSERY", 3)
+	-- 4 bệ máy ấp (2 hàng): máy "Tổ Ấm" rộng ~7.9 nên bệ 7.6
 	local slot = 1
 	for _, z in ipairs({ 18, 31 }) do
 		for _, x in ipairs({ -35, -21 }) do
-			block(shed, "IncubatorSlot" .. slot, Vector3.new(6, 0.4, 6), cf * CFrame.new(x, 0.6, z), Color3.fromRGB(200, 200, 210), Enum.Material.Metal)
+			block(shed, "IncubatorSlot" .. slot, Vector3.new(7.6, 0.4, 7.6), cf * CFrame.new(x, 0.6, z), Color3.fromRGB(200, 200, 210), Enum.Material.Metal)
 			slot += 1
 		end
 	end
-	-- vài kiện rơm trang trí
+	-- trang trí: kiện rơm, đèn lồng treo
 	for _, p in ipairs({ { -40, 12 }, { -16, 37 } }) do
-		block(shed, "HayBale", Vector3.new(2.5, 1.6, 1.6), cf * CFrame.new(p[1], 1.2, p[2]), Color3.fromRGB(230, 200, 110), Enum.Material.Fabric)
+		block(shed, "HayBale", Vector3.new(2.5, 1.6, 1.6), cf * CFrame.new(p[1], 1.2, p[2]), Color3.fromRGB(225, 195, 115), Enum.Material.Fabric)
+	end
+	for _, x in ipairs({ -35, -21 }) do
+		local lantern = decor(ball(shed, "Lantern", 1, (cf * CFrame.new(x, 8.2, 24.5)).Position, Color3.fromRGB(255, 225, 160), Enum.Material.Neon))
+		BuildUtil.light(lantern, Color3.fromRGB(255, 210, 150), 14, 0.8)
 	end
 	shed.Parent = plot
 end
 
--- ===== Ao vườn (nước thật) + 5 ô máy câu =====
-local function buildPond(plot, cf)
+-- ===== Bến gỗ sát sông (sân sau): 5 bệ máy câu, đoạn sông trước bến để câu tay =====
+local function buildDock(plot, cf)
 	local area = Instance.new("Model")
 	area.Name = "FishingArea"
-	local px, pz, pw, pd = 28, 27, 28, 26 -- tâm + kích thước ao (x 14..42, z 14..40)
-
-	local terrain = workspace.Terrain
-	local shift = TERRAIN_SHIFT -- chỉ hạ đất (xem ParkBuilder); nước fill tới y = 0
-	terrain:FillBlock(cf * CFrame.new(px, -5 + shift, pz), Vector3.new(pw + 2, 2, pd + 2), Enum.Material.Sand)
-	terrain:FillBlock(cf * CFrame.new(px, -2, pz), Vector3.new(pw, 4, pd), Enum.Material.Air)
-	terrain:FillBlock(cf * CFrame.new(px, -2, pz), Vector3.new(pw, 4, pd), Enum.Material.Water)
-	marker(area, "Water", Vector3.new(pw, 1, pd), cf * CFrame.new(px, -0.5, pz))
-
-	-- viền đá cuội
-	local stone = Color3.fromRGB(140, 140, 135)
-	block(area, "PondRim", Vector3.new(pw + 3, 1, 1.5), cf * CFrame.new(px, 0, pz - pd / 2 - 0.75), stone, Enum.Material.Slate)
-	block(area, "PondRim", Vector3.new(pw + 3, 1, 1.5), cf * CFrame.new(px, 0, pz + pd / 2 + 0.75), stone, Enum.Material.Slate)
-	for _, s in ipairs({ -1, 1 }) do
-		block(area, "PondRim", Vector3.new(1.5, 1, pd), cf * CFrame.new(px + s * (pw / 2 + 0.75), 0, pz), stone, Enum.Material.Slate)
+	-- sàn bến vắt ngang sân sau, nhô ra mép sông (nước bắt đầu ở z = 47)
+	block(area, "Dock", Vector3.new(84, 0.6, 8), cf * CFrame.new(0, 0.3, 43.5), C.Wood, Enum.Material.WoodPlanks)
+	for _, x in ipairs({ -40, -20, 0, 20, 40 }) do
+		block(area, "Piling", Vector3.new(0.9, 3, 0.9), cf * CFrame.new(x, -0.6, 47.2), C.DarkWood, Enum.Material.Wood)
 	end
-	-- lá sen
-	for _, p in ipairs({ { 22, 32 }, { 35, 22 }, { 31, 36 } }) do
-		decor(cylinder(area, "LilyPad", 0.1, 2.2, cf * CFrame.new(p[1], 0.05, p[2]), Color3.fromRGB(70, 160, 70), Enum.Material.Grass))
+	-- Nước sông thật là Terrain (ParkBuilder.BuildRiver). Marker "Water" đánh dấu đoạn sông trước bến của nhà này = chỗ câu tay (Fishing: Pond)
+	marker(area, "Water", Vector3.new(SIZE, 1, 16), cf * CFrame.new(0, -0.5, 55))
+	-- 5 bệ máy câu trên bến, mặt trước (-Z của bệ quay về +Z) = hướng ra mặt sông. Máy asset thu nhỏ rộng ~5.4 (Plots.MACHINE_SCALE)
+	for i, x in ipairs({ -32, -16, 0, 16, 32 }) do
+		block(area, "FisherSlot" .. i, Vector3.new(5, 0.4, 5), cf * CFrame.new(x, 0.8, 42) * CFrame.Angles(0, math.pi, 0), Color3.fromRGB(120, 120, 130), Enum.Material.DiamondPlate)
 	end
-
-	-- 5 ô máy câu ở mép trước ao (máy asset thu nhỏ còn ~5.4 stud rộng, xem Plots.MACHINE_SCALE), -Z của bệ quay ra mặt nước
-	for i, x in ipairs({ 16, 22, 28, 34, 40 }) do
-		block(area, "FisherSlot" .. i, Vector3.new(5, 0.4, 5), cf * CFrame.new(x, 0.2, 8) * CFrame.Angles(0, math.pi, 0), Color3.fromRGB(120, 120, 130), Enum.Material.DiamondPlate)
+	local post = block(area, "SignPost", Vector3.new(0.6, 5, 0.6), cf * CFrame.new(-42, 2.5, 38.5), C.DarkWood, Enum.Material.Wood)
+	BuildUtil.billboard(post, "RIVER DOCK", 3.5)
+	-- đèn đầu bến + ghế ngắm sông
+	for _, x in ipairs({ -42, 42 }) do
+		BuildUtil.lamp(area, (cf * CFrame.new(x, 0, 41)).Position)
 	end
-	local post = block(area, "SignPost", Vector3.new(0.6, 5, 0.6), cf * CFrame.new(28, 2.5, 3), C.DarkWood, Enum.Material.Wood)
-	BuildUtil.billboard(post, "AUTO-FISHING", 3.5)
+	block(area, "BenchSeat", Vector3.new(5, 0.4, 1.6), cf * CFrame.new(-24, 1.6, 37), C.Wood, Enum.Material.Wood)
+	block(area, "BenchBack", Vector3.new(5, 1.6, 0.3), cf * CFrame.new(-24, 2.6, 36.1), C.Wood, Enum.Material.Wood)
+	for _, x in ipairs({ -26, -22 }) do
+		block(area, "BenchLeg", Vector3.new(0.4, 1.4, 1.2), cf * CFrame.new(x, 0.7, 37), C.DarkWood, Enum.Material.Wood)
+	end
 	area.Parent = plot
+end
+
+-- Vườn sau nhà (chỗ cũ của ao): bãi cỏ, cây, luống hoa, bàn dã ngoại nhìn ra sông
+local function buildGarden(plot, cf, rng)
+	local garden = Instance.new("Folder")
+	garden.Name = "Garden"
+	for _, p in ipairs({ { 36, 16 }, { 20, 34 } }) do
+		local pos = (cf * CFrame.new(p[1], 0, p[2])).Position
+		BuildUtil.tree(garden, pos, 1)
+	end
+	block(garden, "PicnicTop", Vector3.new(5, 0.3, 3), cf * CFrame.new(28, 2.6, 26), C.Wood, Enum.Material.Wood)
+	for _, x in ipairs({ 26.3, 29.7 }) do
+		block(garden, "PicnicLeg", Vector3.new(0.4, 2.45, 2.6), cf * CFrame.new(x, 1.2, 26), C.DarkWood, Enum.Material.Wood)
+	end
+	for _, z in ipairs({ 23.6, 28.4 }) do
+		block(garden, "PicnicSeat", Vector3.new(5, 0.3, 1), cf * CFrame.new(28, 1.6, z), C.Wood, Enum.Material.Wood)
+	end
+	block(garden, "FlowerBed", Vector3.new(10, 0.6, 3), cf * CFrame.new(28, 0.3, 38), Color3.fromRGB(100, 70, 45), Enum.Material.Ground)
+	for _ = 1, 9 do
+		local p = cf * CFrame.new(28 + rng:NextNumber(-4.5, 4.5), 1, 38 + rng:NextNumber(-1, 1))
+		decor(ball(garden, "Flower", 0.8, p.Position, Color3.fromRGB(255, 140, 180), Enum.Material.Neon))
+	end
+	garden.Parent = plot
+end
+
+-- ===== Biển tên TO ĐÙNG trên nóc nhà (Part "Sign"): ảnh avatar + tên chủ nhà, đọc được từ hồ. Plots.setSign điền nội dung =====
+local SIGN_COLORS = {
+	Color3.fromRGB(255, 111, 181), Color3.fromRGB(61, 184, 245), Color3.fromRGB(92, 214, 107), Color3.fromRGB(242, 194, 48),
+	Color3.fromRGB(155, 107, 255), Color3.fromRGB(255, 140, 26), Color3.fromRGB(255, 90, 77), Color3.fromRGB(127, 240, 208),
+}
+
+local function buildRoofSign(plot, cf, index)
+	local color = SIGN_COLORS[(index - 1) % #SIGN_COLORS + 1]
+	local cz = (HZ0 + HZ1) / 2
+	local y = RIDGE + 7.8
+	for _, x in ipairs({ -11, 11 }) do
+		block(plot, "SignPost", Vector3.new(1.2, 7, 1.2), cf * CFrame.new(x, RIDGE + 2.6, cz), C.DarkWood, Enum.Material.Wood)
+	end
+	block(plot, "SignTrim", Vector3.new(32, 9.4, 1.4), cf * CFrame.new(0, y, cz), color, Enum.Material.SmoothPlastic)
+	local board = block(plot, "Sign", Vector3.new(30, 8, 1.6), cf * CFrame.new(0, y, cz), Color3.fromRGB(28, 40, 80), Enum.Material.SmoothPlastic)
+	for _, face in ipairs({ Enum.NormalId.Front, Enum.NormalId.Back }) do
+		local gui = Instance.new("SurfaceGui")
+		gui.Face = face
+		gui.SizingMode = Enum.SurfaceGuiSizingMode.PixelsPerStud
+		gui.PixelsPerStud = 24
+		local panel = Instance.new("Frame")
+		panel.Name = "Panel"
+		panel.Size = UDim2.fromScale(1, 1)
+		panel.BackgroundTransparency = 1
+		panel.Parent = gui
+		local avatar = Instance.new("ImageLabel")
+		avatar.Name = "Avatar"
+		avatar.AnchorPoint = Vector2.new(0, 0.5)
+		avatar.Position = UDim2.fromScale(0.03, 0.5)
+		avatar.Size = UDim2.fromOffset(160, 160)
+		avatar.BackgroundColor3 = color
+		avatar.Visible = false
+		avatar.Parent = panel
+		local avatarCorner = Instance.new("UICorner")
+		avatarCorner.CornerRadius = UDim.new(0.5, 0)
+		avatarCorner.Parent = avatar
+		local avatarStroke = Instance.new("UIStroke")
+		avatarStroke.Color = Color3.new(1, 1, 1)
+		avatarStroke.Thickness = 5
+		avatarStroke.Parent = avatar
+		local name = Instance.new("TextLabel")
+		name.Name = "NameLabel"
+		name.AnchorPoint = Vector2.new(1, 0.5)
+		name.Position = UDim2.fromScale(0.98, 0.5)
+		name.Size = UDim2.fromScale(0.74, 0.84)
+		name.BackgroundTransparency = 1
+		name.Font = Enum.Font.GothamBlack
+		name.TextScaled = true
+		name.Text = "FOR RENT"
+		name.TextColor3 = Color3.new(1, 1, 1)
+		name.TextStrokeTransparency = 0
+		name.TextStrokeColor3 = Color3.fromRGB(20, 20, 40)
+		name.Parent = panel
+		gui.Parent = board
+	end
+end
+
+-- ===== Phòng rương trong nhà: rương lớn (Stash, [E] cất / mở) + giá trưng bày rương theo hạng (VaultSlot1..5, Plots dựng chồng rương) =====
+local function buildVault(plot, cf)
+	local f = FLOOR_TOP
+	local vault = Instance.new("Model")
+	vault.Name = "Vault"
+	local function at(x, y, z)
+		return cf * CFrame.new(x, y, z)
+	end
+	-- bục + thảm vàng
+	block(vault, "VaultDeck", Vector3.new(13, 0.3, 5), at(0, f + 0.15, 0.4), C.DarkWood, Enum.Material.WoodPlanks)
+	block(vault, "VaultRug", Vector3.new(11, 0.1, 4), at(0, f + 0.35, 0.4), Color3.fromRGB(201, 154, 18), Enum.Material.Fabric)
+	-- giá trưng bày 5 hạng trên tường sau
+	block(vault, "VaultShelf", Vector3.new(12.4, 0.4, 1.8), at(0, f + 5.2, 2.1), C.DarkWood, Enum.Material.Wood)
+	for _, x in ipairs({ -6.2, 6.2 }) do
+		block(vault, "VaultBracket", Vector3.new(0.4, 5.2, 1.8), at(x, f + 2.6, 2.1), C.DarkWood, Enum.Material.Wood)
+	end
+	for i = 1, 5 do
+		marker(vault, "VaultSlot" .. i, Vector3.new(2, 0.1, 1.4), at((i - 3) * 2.4, f + 5.45, 2.1))
+		-- mảng màu hạng dưới mỗi chỗ để biết chỗ nào của hạng nào
+		local pad = Color3.fromHSV((i - 1) / 5 * 0.8, 0.5, 1)
+		decor(block(vault, "VaultTag" .. i, Vector3.new(1.8, 0.15, 1.2), at((i - 3) * 2.4, f + 5.42, 2.1), pad, Enum.Material.Neon))
+	end
+	-- bảng "VAULT" + đèn rọi
+	local plaque = block(vault, "VaultPlaque", Vector3.new(8, 1.8, 0.4), at(0, f + 10.6, HZ1 - 1.4), Color3.fromRGB(28, 40, 80))
+	plaque.Material = Enum.Material.SmoothPlastic
+	BuildUtil.surfaceText(plaque, "VAULT", Color3.fromRGB(242, 194, 48))
+	local glow = decor(ball(vault, "VaultLamp", 0.9, at(0, f + 8, 0.4).Position, Color3.fromRGB(255, 230, 150), Enum.Material.Neon))
+	BuildUtil.light(glow, Color3.fromRGB(255, 215, 130), 22, 1.4)
+	vault.Parent = plot
+
+	-- Rương lớn (Stash) ở giữa bục, mặt rương quay vào phòng (-Z). Phóng 1.8 lần rồi đặt ĐÁY theo hộp bao thật chạm bục
+	local stash = Models.Anchor(Models.Get("Wooden Chest"))
+	stash.Name = "Stash"
+	stash:ScaleTo(stash:GetScale() * 1.8)
+	stash:PivotTo(at(0, f + 3, 0.4))
+	local box, size = stash:GetBoundingBox()
+	stash:PivotTo(stash:GetPivot() + Vector3.new(0, (cf.Position.Y + f + 0.4) - (box.Position.Y - size.Y / 2), 0))
+	stash.Parent = plot
+	BuildUtil.billboard(stash.PrimaryPart or stash:FindFirstChildWhichIsA("BasePart", true), "STASH\nStore & open chests", 3.2, 10)
+end
+
+-- Ổ khóa cửa (Part "DoorLock") trên khung cửa: Plots đổi kích thước / màu theo cấp khóa và gắn nút nâng cấp khóa
+local function buildDoorLock(plot, cf)
+	local lock = block(plot, "DoorLock", Vector3.new(0.9, 0.9, 0.5), cf * CFrame.new(3.4, FLOOR_TOP + 4.2, HZ0 - 0.4), C.Wood, Enum.Material.Wood)
+	lock.CanCollide = false
+	local shackle = cylinder(plot, "DoorLockShackle", 0.9, 0.5, cf * CFrame.new(3.4, FLOOR_TOP + 4.9, HZ0 - 0.4) * CFrame.Angles(math.rad(90), 0, 0), C.Iron, Enum.Material.Metal)
+	shackle.CanCollide = false
 end
 
 -- ===== Sân trước: lối đá, hộp thư, thảm chùi chân, cây, luống hoa =====
@@ -309,23 +453,9 @@ local function buildYard(plot, cf, rng)
 	for z = -43, HZ0 - 10, 3 do
 		block(yard, "SteppingStone", Vector3.new(2.6, 0.3, 1.8), cf * CFrame.new(rng:NextNumber(-0.3, 0.3), 0.15, z), Color3.fromRGB(165, 160, 150), Enum.Material.Slate)
 	end
-	-- Rương cất đồ (Stash) NGOÀI SÂN TRƯỚC: bên trái lối đá, gần cổng => chạy từ hồ về vào cổng là cất được ngay.
-	-- Đặt trên bục gỗ, mặt rương quay ra lối đi (+X). Plots gắn nút [E] cho chủ nhà.
-	-- Phóng 1.8 lần rồi đặt ĐÁY rương (theo hộp bao thật) chạm mặt bục, nên model thật trong CustomModels cũng đứng đúng.
-	local deckTop = 0.3
-	local spot = cf * CFrame.new(-10, 0, -32)
-	block(yard, "StashDeck", Vector3.new(7, deckTop, 9), spot * CFrame.new(0, deckTop / 2, 0), C.Wood, Enum.Material.WoodPlanks)
-	local stash = Models.Anchor(Models.Get("Wooden Chest"))
-	stash.Name = "Stash"
-	stash:ScaleTo(stash:GetScale() * 1.8)
-	stash:PivotTo(spot * CFrame.new(0, 3, 0) * CFrame.Angles(0, math.rad(-90), 0))
-	local box, size = stash:GetBoundingBox()
-	stash:PivotTo(stash:GetPivot() + Vector3.new(0, (spot.Y + deckTop) - (box.Position.Y - size.Y / 2), 0))
-	stash.Parent = plot
-	BuildUtil.billboard(stash.PrimaryPart or stash:FindFirstChildWhichIsA("BasePart", true), "STASH\nDeposit your loot", 5, 10)
-	-- hộp thư = biển tên chủ nhà (Plots gắn tên lên Part "Sign")
+	-- hộp thư (trang trí; tên chủ nhà nằm ở biển TO trên nóc nhà, xem buildRoofSign)
 	block(yard, "MailboxPost", Vector3.new(0.4, 3.4, 0.4), cf * CFrame.new(8, 1.7, -42), C.DarkWood, Enum.Material.Wood)
-	block(plot, "Sign", Vector3.new(1.4, 1.2, 2.2), cf * CFrame.new(8, 3.9, -42), Color3.fromRGB(70, 120, 200), Enum.Material.Metal)
+	block(yard, "Mailbox", Vector3.new(1.4, 1.2, 2.2), cf * CFrame.new(8, 3.9, -42), Color3.fromRGB(70, 120, 200), Enum.Material.Metal)
 	-- cây ăn quả hai bên sân trước
 	for _, x in ipairs({ -30, 30 }) do
 		local pos = (cf * CFrame.new(x, 0, -28)).Position
@@ -358,8 +488,12 @@ function HouseBuilder.Build(parent, index, cf)
 
 	buildFence(plot, cf)
 	buildHouse(plot, cf, rng)
+	buildVault(plot, cf)
+	buildDoorLock(plot, cf)
+	buildRoofSign(plot, cf, index)
 	buildHatchery(plot, cf)
-	buildPond(plot, cf)
+	buildDock(plot, cf)
+	buildGarden(plot, cf, rng)
 	buildYard(plot, cf, rng)
 
 	-- Điểm về nhà = thảm chùi chân trước hiên, quay mặt vào nhà

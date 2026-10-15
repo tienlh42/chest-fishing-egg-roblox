@@ -35,12 +35,26 @@ Code nằm trong thư mục này và được Rojo đồng bộ vào Studio (kh�
 1. Chạy `rojo serve` trong thư mục dự án.
 2. Studio -> tab **Plugins** -> **Rojo** -> **Connect** -> **Accept**.
 
+### Lệnh terminal hay dùng
+Chạy trong thư mục dự án (`C:\Roblox\ChestFishingEggGame`), công cụ cài bằng Rokit (`rojo` 7.7.1, `selene` 0.32.0):
+
+| Lệnh | Việc |
+|---|---|
+| `rojo serve` | Mở server đồng bộ code vào Studio (rồi Studio > Plugins > Rojo > **Connect**). Để cửa sổ này chạy suốt, sửa file `.lua` là Studio cập nhật |
+| `selene .` | Kiểm tra lỗi / cảnh báo toàn bộ code Luau (phải ra `0 errors, 0 warnings` trước khi báo xong) |
+| `rojo build -o build.rbxl` | Đóng gói thành file place để mở thử (không cần Studio đang chạy) |
+| `rojo sourcemap default.project.json -o sourcemap.json` | Cập nhật `sourcemap.json` cho VS Code gợi ý code |
+| `python tools/sim_economy.py` | Mô phỏng kinh tế (thu nhập, tiến độ, lời cướp nhà), xem `ECONOMY_DESIGN.md` |
+| `python tools/prepare_assets.py` | Chép model từ repo `roblox-assets` vào `Assets/Models` |
+
+**Chạy thử 2 người chơi (để test cướp nhà):** trong Studio, tab **Test** > **Clients and Servers** > đặt **Players = 2** > **Start**. Người A làm xong hướng dẫn trước (nhà người đang hướng dẫn không bị cướp). Người B đứng trong sân nhà A, bấm **F** ở Stash hoặc máy câu.
+
 ## Bước 4: Chạy thử
 1. Nhấn **F5**. Bạn xuất hiện trước nhà mình (thảm đỏ trước hiên).
 2. Chạy ra hồ ở giữa map (giữ **Shift** để chạy) -> đứng trên lối gạch, quay mặt ra hồ -> **GIỮ** nút **Fish** tròn to ở góc dưới phải (hoặc phím **F**).
    Nhả nút = tạm dừng (giữ tiến độ). Thanh đầy -> rương vào **túi tạm** (Bag x/4).
 3. Coi chừng **ngỗng bảo vệ**: nó kêu "Honk?" thì nhả nút ngay. Bị đuổi thì chạy về nhà. Bị bắt = mất đồ trong túi, về nhà.
-4. Về nhà -> bấm **E** ở rương **Stash** trong nhà để cất đồ (cộng coins/trứng). Đang có đồ trong túi thì không bấm **My Plot** được.
+4. Về nhà -> bấm **E** ở rương **Stash** trước nhà: rương trong túi chuyển vào kho nhà, bảng **Stash** hiện ra để **Open** rương (ra coins / trứng). Đang có đồ trong túi thì không bấm **My Plot** được.
 5. Ấp trứng: chuồng ấp sau nhà -> **E** ở máy ấp -> chọn trứng -> đợi -> **E** nhận pet.
 6. **Tool Shop** / **Market** nằm giữa các nhà trên đường vòng: mua cần câu, máy câu tự động, máy ấp / bán trứng, pet.
 7. Máy câu tự động ở ao sau nhà tích rương cả khi offline; đến máy bấm **E** để mở.

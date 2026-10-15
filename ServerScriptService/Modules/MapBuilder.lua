@@ -2,17 +2,17 @@
 -- Dựng map màn 1 TẠM bằng Part + Terrain (xem MAP_LEVEL1.md và PARK_REDESIGN.md).
 -- Nếu Workspace đã có Folder "Map" (map bạn tự build) thì KHÔNG dựng gì, dùng luôn map đó.
 --   Bố cục: công viên hồ ở CHÍNH GIỮA, 8 nhà xếp VÒNG TRÒN quanh hồ (nhà nào ra hồ cũng xa như nhau),
---           Tool Shop / Market nằm ở 2 khe giữa các nhà. Không có sảnh chính.
---   Tool Shop / Market + điểm hồi sinh : ở file này
+--           Tool Shop + Market dựng SÁT NHAU thành 1 quảng trường ở khe giữa 2 nhà (góc 225°). Không có sảnh chính.
+--   Điểm hồi sinh                       : ở file này
+--   Tool Shop / Market (quảng trường)   : ShopBuilder
 --   Hồ + công viên + đường vòng        : ParkBuilder
 --   8 plot nhà gỗ                       : HouseBuilder
 
 local BuildUtil = require(script.Parent.BuildUtil)
 local HouseBuilder = require(script.Parent.HouseBuilder)
 local ParkBuilder = require(script.Parent.ParkBuilder)
+local ShopBuilder = require(script.Parent.ShopBuilder)
 
-local block, surfaceText, placeModel = BuildUtil.block, BuildUtil.surfaceText, BuildUtil.placeModel
-local C = BuildUtil.Colors
 
 local MapBuilder = {}
 
@@ -27,26 +27,6 @@ local function ringCFrame(angle, r)
 	return CFrame.lookAt(pos, Vector3.zero)
 end
 
--- ===== Gian hàng (Tool Shop / Market): cf có -Z = mặt trước (quay vào tâm hồ) =====
-local function buildStall(map, name, title, cf, roofColor, npcName)
-	local stall = Instance.new("Model")
-	stall.Name = name
-
-	block(stall, "Floor", Vector3.new(30, 1, 24), cf, C.Wood, Enum.Material.WoodPlanks)
-	block(stall, "BackWall", Vector3.new(30, 10, 1), cf * CFrame.new(0, 5.5, 11.5), Color3.fromRGB(230, 220, 200), Enum.Material.Brick)
-	for _, x in ipairs({ -14.5, 14.5 }) do
-		block(stall, "SideWall", Vector3.new(1, 10, 24), cf * CFrame.new(x, 5.5, 0), Color3.fromRGB(230, 220, 200), Enum.Material.Brick)
-	end
-	block(stall, "Roof", Vector3.new(32, 1, 26), cf * CFrame.new(0, 11, 0), roofColor)
-
-	block(stall, "PromptPart", Vector3.new(14, 3, 3), cf * CFrame.new(0, 2, -2), C.DarkWood, Enum.Material.Wood) -- quầy, có nút [E]
-	placeModel(stall, npcName, cf * CFrame.new(0, 0.5, 2))
-
-	local board = block(stall, "SignBoard", Vector3.new(20, 4, 0.6), cf * CFrame.new(0, 13.5, -12), roofColor)
-	surfaceText(board, title)
-	stall.Parent = map
-end
-
 -- ===== 8 nhà xếp vòng quanh hồ =====
 -- Mỗi nhà: { CFrame (cổng -Z quay vào hồ), Angle (góc thật nhìn từ tâm), Dist (tâm hồ -> tâm nhà) }
 local PLOTS = {}
@@ -55,7 +35,7 @@ for i = 0, 7 do
 	local pos = Vector3.new(math.cos(a) * PLOT_RX, 0, math.sin(a) * PLOT_RZ)
 	PLOTS[i + 1] = { CFrame = CFrame.lookAt(pos, Vector3.zero), Angle = math.atan2(pos.Z, pos.X), Dist = pos.Magnitude }
 end
-local TOOLSHOP_ANGLE, MARKET_ANGLE = math.rad(225), math.rad(45) -- 2 khe giữa các nhà
+local PLAZA_ANGLE = math.rad(225) -- khe giữa 2 nhà: quảng trường Tool Shop + Market
 
 local function buildPlots(map)
 	local plots = Instance.new("Folder")
@@ -71,7 +51,7 @@ local function buildSpawn(map)
 	local spawn = Instance.new("SpawnLocation")
 	spawn.Name = "Spawn"
 	spawn.Size = Vector3.new(8, 1, 8)
-	spawn.CFrame = ringCFrame(TOOLSHOP_ANGLE, SHOP_R - 20) * CFrame.new(0, 0.1, 0)
+	spawn.CFrame = ringCFrame(PLAZA_ANGLE, SHOP_R - 20) * CFrame.new(0, 0.1, 0)
 	spawn.Anchored = true
 	spawn.Neutral = true
 	spawn.Duration = 0
@@ -90,24 +70,23 @@ local function build()
 		baseplate:Destroy()
 	end
 
-	ParkBuilder.Build(map) -- terrain + hồ + công viên (phải chạy trước plot vì plot đào ao trên nền terrain)
+	ParkBuilder.Build(map) -- terrain + hồ + công viên (phải chạy trước mọi thứ vì là nền đất)
+	ParkBuilder.BuildRiver() -- sông vòng quanh các nhà (sau lưng mỗi plot)
 
 	local driveways = {}
 	for _, info in ipairs(PLOTS) do
 		table.insert(driveways, { Angle = info.Angle, To = info.Dist - 45 })
 	end
-	table.insert(driveways, { Angle = TOOLSHOP_ANGLE, To = SHOP_R - 12 })
-	table.insert(driveways, { Angle = MARKET_ANGLE, To = SHOP_R - 12 })
+	table.insert(driveways, { Angle = PLAZA_ANGLE, To = SHOP_R - 12 })
 	local roads = Instance.new("Folder")
 	roads.Name = "Roads"
 	ParkBuilder.BuildRoads(roads, driveways)
 	roads.Parent = map
 
-	buildStall(map, "ToolShop", "TOOL SHOP", ringCFrame(TOOLSHOP_ANGLE, SHOP_R), Color3.fromRGB(60, 110, 200), "Shopkeeper")
-	buildStall(map, "Market", "MARKET", ringCFrame(MARKET_ANGLE, SHOP_R), Color3.fromRGB(200, 70, 60), "Merchant")
+	ShopBuilder.Build(map, ringCFrame(PLAZA_ANGLE, SHOP_R)) -- Tool Shop (trái) + Market (phải) sát nhau
 	buildSpawn(map)
-	-- Điểm đáp VÔ HÌNH trước Tool Shop khi bấm nút "Tool Shop" (Teleports.lua)
-	BuildUtil.marker(map, "ShopArrival", Vector3.new(4, 1, 4), ringCFrame(TOOLSHOP_ANGLE, SHOP_R) * CFrame.new(-10, 0.5, -20))
+	-- Điểm đáp VÔ HÌNH giữa quảng trường khi bấm nút "Tool Shop" (Teleports.lua)
+	BuildUtil.marker(map, "ShopArrival", Vector3.new(4, 1, 4), ringCFrame(PLAZA_ANGLE, SHOP_R) * CFrame.new(0, 0.5, -20))
 	buildPlots(map)
 
 	map.Parent = workspace

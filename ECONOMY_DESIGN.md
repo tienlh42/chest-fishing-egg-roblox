@@ -296,9 +296,9 @@ Mọi thay đổi `profile` cần bước chuyển đổi dữ liệu đã lưu 
 2. ~~**Độ bền cần câu:** `profile.Rods` có độ bền, hao khi kéo rương hồ, hết bền thì biến mất, UI thanh bền.~~ **XONG 15/10/2026** (từ #38 độ bền hiện bằng thanh).
 3. ~~**Pet thành bản ghi + equip pet + độ bền pet** (chuyển đổi dữ liệu, `Market.SellPet` theo bản ghi).~~ **XONG 15/10/2026** (xem DEVLOG #35).
 4. ~~**Máy câu:** tách ổ và tier, độ bền, nâng tier tại chỗ.~~ **XONG 15/10/2026** (xem DEVLOG #37).
-5. **Kho nhà vô hạn giữ rương chưa mở** (SYSTEM_DESIGN mục 5.2), hành động mở rương.
-6. **Cướp nhà:** Master Key, mở mục tiêu, tự chọn món, báo động, trả đồ khi bị bắt.
-7. Khóa cửa, khiên, perk qua `Loadout.lua`.
+5. ~~**Kho nhà vô hạn giữ rương chưa mở** (SYSTEM_DESIGN mục 5.2), hành động mở rương.~~ **XONG 15/10/2026** (xem DEVLOG #39; mở tức thì, chưa có thời gian chờ).
+6. **Cướp nhà:** Master Key, mở mục tiêu, tự chọn món, báo động, trả đồ khi bị bắt. **CODE XONG 15/10/2026** (DEVLOG #40, #41), còn test 2 người thật; hết giờ sân đang xử tạm, ngỗng nhà ở bước 7.
+7. Khóa cửa, khiên, perk qua `Loadout.lua`. **CODE XONG 15/10/2026** (DEVLOG #42), chưa chơi thử; còn thang nghi ngờ đầy đủ, perk WarnRange, công trình đồn.
 8. Chơi thử, đo 3 số thật (xem mục 12), chỉnh lại bằng `tools/sim_economy.py`.
 
 Bước 3, 5, 6 phụ thuộc nhau, làm gần nhau.

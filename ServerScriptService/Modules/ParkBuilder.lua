@@ -4,6 +4,8 @@
 --   4 lối phụ, đường vòng quanh công viên, 2 quảng trường, cây non có cọc chống, cây tán lớn, nhà bảo vệ.
 -- Hồ là "Lake" (hồ cấm, ngỗng tuần tra) – KHÔNG phải vùng an toàn.
 
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local Config = require(ReplicatedStorage.Config)
 local BuildUtil = require(script.Parent.BuildUtil)
 
 local block, ball, cylinder, marker, decor = BuildUtil.block, BuildUtil.ball, BuildUtil.cylinder, BuildUtil.marker, BuildUtil.decor
@@ -387,6 +389,28 @@ function ParkBuilder.BuildRoads(roads, driveways)
 	-- lối từ đường vòng vào từng nhà / cửa hàng
 	for _, d in ipairs(driveways or {}) do
 		spoke(d.Angle, RING_R + RING_W / 2, d.To, 8)
+	end
+end
+
+-- Sông khép kín chạy VÒNG QUANH 8 nhà (nằm ngoài vòng nhà, sau lưng mỗi plot): các đoạn Terrain nước nối nhau theo elip Config.River.
+-- Mỗi đoạn: lòng cát, đào không khí, đổ nước (cùng thứ tự với ao cũ). Nước chỉ để ngắm + câu ở bến (marker "Water" của từng plot).
+function ParkBuilder.BuildRiver()
+	local terrain = workspace.Terrain
+	local river = Config.River
+	local segments = river.Segments
+	for i = 0, segments - 1 do
+		local a0, a1 = i / segments * math.pi * 2, (i + 1) / segments * math.pi * 2
+		local p0 = Vector3.new(river.Rx * math.cos(a0), 0, river.Rz * math.sin(a0))
+		local p1 = Vector3.new(river.Rx * math.cos(a1), 0, river.Rz * math.sin(a1))
+		local mid = (p0 + p1) / 2
+		local length = (p1 - p0).Magnitude + 3 -- chồng lên đoạn kế 3 stud để không hở ở chỗ cong
+		local cf = CFrame.lookAt(mid, mid + (p1 - p0))
+		terrain:FillBlock(cf * CFrame.new(0, -5 + TERRAIN_SHIFT, 0), Vector3.new(river.Width + 2, 2, length), Enum.Material.Sand)
+		terrain:FillBlock(cf * CFrame.new(0, -2, 0), Vector3.new(river.Width, 4, length), Enum.Material.Air)
+		terrain:FillBlock(cf * CFrame.new(0, -2, 0), Vector3.new(river.Width, 4, length), Enum.Material.Water)
+		if i % 8 == 7 then
+			task.wait() -- chia nhỏ để không treo server lúc dựng map
+		end
 	end
 end
 

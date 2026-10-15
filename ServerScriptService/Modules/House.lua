@@ -188,7 +188,7 @@ end
 -- ===== Cấp / thu hồi nhà (Plots gọi) =====
 function House.OnAssign(player, plot)
 	prompts[player] = {}
-	local mailbox = find(plot, "Sign")
+	local mailbox = find(plot, "Mailbox")
 	if mailbox and cfg.Daily.Enabled then
 		prompts[player].Daily = Plots.MakeOwnerPrompt(plot, mailbox, "Open Daily Gift", "Mailbox", House.ClaimDaily)
 		prompts[player].Daily.Name = "HousePrompt"

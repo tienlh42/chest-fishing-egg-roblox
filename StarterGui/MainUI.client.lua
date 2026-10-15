@@ -155,6 +155,8 @@ end
 
 -- ===== Khung chính =====
 local gui = make("ScreenGui", { Name = "MainUI", ResetOnSpawn = false }, player:WaitForChild("PlayerGui"))
+-- Lớp phủ trên cùng: thông báo hệ thống (toast) luôn hiện đè lên mọi bảng (Shop, Bag, Stash...)
+local overlay = make("ScreenGui", { Name = "MainUIOverlay", ResetOnSpawn = false, DisplayOrder = 100 }, player:WaitForChild("PlayerGui"))
 
 local status = make("TextLabel", {
 	Size = UDim2.fromScale(0.44, 0),
@@ -169,7 +171,7 @@ local status = make("TextLabel", {
 	TextColor3 = Color3.new(1, 1, 1),
 	Text = "",
 	Visible = false,
-}, gui)
+}, overlay)
 corner(status, 23)
 make("UIStroke", { Color = COLORS.Gold, Thickness = 3 }, status)
 make("UIPadding", { PaddingLeft = UDim.new(0, 14), PaddingRight = UDim.new(0, 14), PaddingTop = UDim.new(0, 6), PaddingBottom = UDim.new(0, 6) }, status)
@@ -459,6 +461,7 @@ local reel = nil -- { Start, Duration, Base, Paused, PausedAt, Timeout } khi đa
 local petState = nil -- bản mới nhất của Pets.Status
 local petHPs = {} -- [Id pet] = HP cuối cùng thấy được. Pet không equip thì HP không đổi nên con số này vẫn đúng; chưa thấy lần nào = đầy máu
 local bagCount = 0
+local bagCapacity = 4 -- cập nhật theo Effect "Bag" của server
 local stashPart = nil
 
 local function startReel(data)
@@ -531,6 +534,7 @@ end
 
 local function refreshBag(data)
 	bagCount = data.Count
+	bagCapacity = data.Capacity
 	bagLabel.Text = ("%d / %d%s"):format(data.Count, data.Capacity, data.Count >= data.Capacity and "  FULL" or "")
 	bagLabel.TextColor3 = data.Count >= data.Capacity and COLORS.Red or Color3.new(1, 1, 1)
 	stashFrame.Visible = data.Count > 0
@@ -619,9 +623,14 @@ corner(panel, 20)
 make("UIStroke", { Color = COLORS.Outline, Thickness = 5 }, panel)
 -- Bảng co theo cỡ màn hình (điện thoại nhỏ thì thu lại), mở ra thì nảy lên
 local panelScale = make("UIScale", {}, panel)
-local function panelBaseScale()
+-- Kích thước bảng theo loại (mặc định 460x480). Shop rộng hơn để xếp thẻ có hình model
+local PANEL_SIZES = { Shop = Vector2.new(800, 580), Build = Vector2.new(800, 580) }
+local DEFAULT_PANEL_SIZE = Vector2.new(460, 480)
+
+local function panelBaseScale(size)
 	local view = workspace.CurrentCamera and workspace.CurrentCamera.ViewportSize or Vector2.new(1280, 720)
-	return math.clamp(math.min(view.X / 560, view.Y / 560), 0.55, 1.15)
+	size = size or DEFAULT_PANEL_SIZE
+	return math.clamp(math.min(view.X / (size.X + 100), view.Y / (size.Y + 80)), 0.5, 1.15)
 end
 
 -- Dải tiêu đề màu hồng phía trên
@@ -724,6 +733,15 @@ local function sortedPets()
 	return pets
 end
 
+-- Tổng số rương chưa mở trong kho nhà (profile.Chests)
+local function totalStashChests()
+	local total = 0
+	for _, count in pairs(profile.Chests or {}) do
+		total += count
+	end
+	return total
+end
+
 local function closePanel()
 	panel.Visible = false
 	current = nil
@@ -771,9 +789,9 @@ local function iconModel(name)
 end
 
 -- Hình model trong khung `parent`. silhouette = true: hiện bóng đen (chưa sở hữu)
-local function modelIcon(parent, modelName, silhouette)
+local function modelIcon(parent, modelName, silhouette, height)
 	local vp = make("ViewportFrame", {
-		Size = UDim2.new(1, -8, 0, 68),
+		Size = UDim2.new(1, -8, 0, height or 68),
 		Position = UDim2.fromOffset(4, 4),
 		BackgroundTransparency = 1,
 		LightColor = Color3.new(1, 1, 1),
@@ -898,6 +916,91 @@ local function addCell(grid, spec)
 	end
 end
 
+-- Lưới thẻ cho Shop: mỗi thẻ có hình model (giống Bag), tên, mô tả, thanh độ bền (tùy chọn) và nút mua
+local function addShopGrid()
+	rowCount += 1
+	local grid = make("Frame", {
+		Size = UDim2.new(1, -8, 0, 0),
+		AutomaticSize = Enum.AutomaticSize.Y,
+		BackgroundTransparency = 1,
+		LayoutOrder = rowCount,
+	}, list)
+	make("UIGridLayout", {
+		CellSize = UDim2.fromOffset(232, 236),
+		CellPadding = UDim2.fromOffset(10, 12),
+		SortOrder = Enum.SortOrder.LayoutOrder,
+	}, grid)
+	return grid
+end
+
+-- spec: { Model | Emoji, Name, Info (có thể nhiều dòng), Rank (1..6 màu viền), Bar ({ Ratio, Color, Label }), Tag, Buttons = { { Text, Color, OnClick, Disabled } } }
+local function addShopCard(grid, spec)
+	local cell = make("Frame", { BackgroundColor3 = COLORS.Row }, grid)
+	corner(cell, 14)
+	make("UIStroke", { Color = RARITY_COLORS[spec.Rank or 1], Thickness = spec.Tag and 4 or 2.5 }, cell)
+	if spec.Model then
+		modelIcon(cell, spec.Model, false, 84)
+	else
+		make("TextLabel", {
+			Size = UDim2.new(1, -8, 0, 76),
+			Position = UDim2.fromOffset(4, 6),
+			BackgroundTransparency = 1,
+			TextScaled = true,
+			Text = spec.Emoji or "?",
+		}, cell)
+	end
+	local nameLabel = make("TextLabel", {
+		Size = UDim2.new(1, -12, 0, 22),
+		Position = UDim2.fromOffset(6, 92),
+		BackgroundTransparency = 1,
+		TextScaled = true,
+		Font = Enum.Font.GothamBlack,
+		TextColor3 = Color3.new(1, 1, 1),
+		Text = spec.Name,
+	}, cell)
+	make("UITextSizeConstraint", { MaxTextSize = 18 }, nameLabel)
+	local info = make("TextLabel", {
+		Size = UDim2.new(1, -12, 0, 48),
+		Position = UDim2.fromOffset(6, 116),
+		BackgroundTransparency = 1,
+		TextSize = 13,
+		TextWrapped = true,
+		TextXAlignment = Enum.TextXAlignment.Left,
+		TextYAlignment = Enum.TextYAlignment.Top,
+		Font = Enum.Font.Gotham,
+		TextColor3 = Color3.fromRGB(225, 225, 240),
+		Text = spec.Info or "",
+	}, cell)
+	make("UITextSizeConstraint", { MaxTextSize = 13 }, info)
+	if spec.Bar then
+		progressBar(cell, UDim2.new(1, -16, 0, 13), UDim2.fromOffset(8, 168), spec.Bar.Ratio, spec.Bar.Color, spec.Bar.Label)
+	end
+	local buttons = spec.Buttons or {}
+	local gap = 6
+	local width = (232 - 16 - gap * (#buttons - 1)) / math.max(#buttons, 1)
+	for i, b in ipairs(buttons) do
+		local btn = button(cell, b.Text, b.Disabled and COLORS.Grey or b.Color, UDim2.fromOffset(width, 38), UDim2.fromOffset(8 + (i - 1) * (width + gap), 190), not b.Disabled and b.OnClick or nil)
+		if b.Disabled then
+			btn.TextTransparency = 0.35
+		end
+	end
+	if spec.Tag then
+		local tag = make("TextLabel", {
+			Size = UDim2.fromOffset(84, 18),
+			AnchorPoint = Vector2.new(0.5, 0),
+			Position = UDim2.new(0.5, 0, 0, -8),
+			BackgroundColor3 = COLORS.Green,
+			Font = Enum.Font.GothamBlack,
+			TextSize = 11,
+			TextColor3 = Color3.new(1, 1, 1),
+			Text = spec.Tag,
+			ZIndex = 3,
+		}, cell)
+		corner(tag, 9)
+		make("UIStroke", { Color = COLORS.Outline, Thickness = 2 }, tag)
+	end
+end
+
 -- ===== Nội dung từng bảng =====
 local renderers = {}
 
@@ -911,103 +1014,181 @@ local function topChestName(odds)
 end
 
 renderers.Shop = function()
-	header("Fishing Rods")
-	for _, rod in ipairs(Config.Rods) do
-		-- Cần đang có thì hiện thanh độ bền; chưa mua thì ghi dùng được bao nhiêu rương
+	-- Cần câu: đang có thì hiện thanh độ bền, chưa mua thì ghi dùng được bao nhiêu rương
+	header("🎣 Fishing Rods")
+	local rods = addShopGrid()
+	for rank, rod in ipairs(Config.Rods) do
 		local left = profile.Rods[rod.Id]
-		local note = ""
-		if not rod.Durability then
-			note = "  (never breaks)"
-		elseif not left then
-			note = ("  (lasts %d chests)"):format(rod.Durability)
-		end
-		local text = ("<b>%s</b>%s\nPurple+ chests %.1f%%   Speed x%.1f"):format(rod.Name, note, Config.TopChestPercent(rod.Odds), 1 / rod.Speed)
+		local info = ("Purple+ chests %.1f%%\nSpeed x%.1f%s"):format(Config.TopChestPercent(rod.Odds), 1 / rod.Speed, rod.Perk and ("\n✨ " .. rod.Perk.Name .. ": " .. rod.Perk.Info) or "")
 		local bar = nil
 		if rod.Durability and left then
 			bar = { Ratio = left / rod.Durability, Color = Config.DurabilityColor(left / rod.Durability), Label = ("%d/%d"):format(left, rod.Durability) }
+		elseif not rod.Durability then
+			info ..= "\nNever breaks"
+		else
+			info ..= ("\nLasts %d chests"):format(rod.Durability)
 		end
-		local spec
+		local buy
 		if profile.EquippedRod == rod.Id then
-			spec = { Text = "Equipped", Disabled = true }
-		elseif profile.Rods[rod.Id] then
-			spec = { Text = "Equip", Color = COLORS.Blue, OnClick = function()
+			buy = { Text = "Equipped", Disabled = true }
+		elseif left then
+			buy = { Text = "Equip", Color = COLORS.Blue, OnClick = function()
 				request("EquipRod", rod.Id)
 			end }
 		else
-			spec = { Text = commas(rod.Price), Color = COLORS.Green, OnClick = function()
+			buy = { Text = commas(rod.Price), Color = COLORS.Green, OnClick = function()
 				request("BuyRod", rod.Id)
 			end }
 		end
-		addRow(text, { spec }, bar)
+		addShopCard(rods, { Model = rod.Name, Name = rod.Name, Info = info, Rank = rank, Bar = bar, Buttons = { buy } })
 	end
 
-	header("Plot Upgrades")
-	local fisherCfg = Config.AutoFisher
-	local pedestals = profile.FisherSlots
-	local nextPedestal = fisherCfg.PedestalPrices[pedestals + 1]
-	addRow(
-		("<b>Machine Pedestal</b> (%d/%d)\nA place for one Auto-Fisher"):format(pedestals, #fisherCfg.PedestalPrices),
-		{ nextPedestal and { Text = commas(nextPedestal), Color = COLORS.Green, OnClick = function()
-			request("BuyFisherSlot")
-		end } or { Text = "Max", Disabled = true } }
-	)
-
-	local slots, maxSlots = profile.IncubatorSlots, Config.Incubators.MaxSlots
-	local price = slots < maxSlots and (Config.Incubators.Prices[slots + 1] or 0)
-	addRow(
-		("<b>Incubator</b> (%d/%d)\nHatch more eggs at the same time"):format(slots, maxSlots),
-		{ price and { Text = commas(price), Color = COLORS.Green, OnClick = function()
-			request("BuyIncubator")
-		end } or { Text = "Max", Disabled = true } }
-	)
-
-	-- Nâng cấp túi tạm (Config.Bag.Upgrades)
+	-- Túi lớn hơn: đồ mang theo nên mua ở Shop. (Máy ấp, ổ máy, máy câu, khóa cửa làm ở NHÀ: bảng Build)
+	header("🎒 Backpack")
+	local packs = addShopGrid()
 	local level = profile.BagLevel or 0
 	local bagNow = level > 0 and Config.Bag.Upgrades[level].Capacity or Config.Bag.Capacity
 	local nextBag = Config.Bag.Upgrades[level + 1]
-	addRow(
-		("<b>Bigger Bag</b> (%d chests)\nCarry more loot from the lake"):format(bagNow),
-		{ nextBag and { Text = commas(nextBag.Price), Color = COLORS.Green, OnClick = function()
+	addShopCard(packs, {
+		Emoji = "🎒",
+		Name = ("Bigger Bag (%d slots)"):format(bagNow),
+		Info = nextBag and ("Next: %d slots. Carry more loot from the lake."):format(nextBag.Capacity) or "Your bag is the biggest!",
+		Rank = 4,
+		Buttons = { nextBag and { Text = commas(nextBag.Price), Color = COLORS.Green, OnClick = function()
 			request("BuyBagUpgrade")
-		end } or { Text = "Max", Disabled = true } }
-	)
+		end } or { Text = "Max", Disabled = true } },
+	})
 
-	-- Máy câu: mua thẳng tier tùy chọn vào ổ trống (máy hỏng thì mua lại), rồi nâng tier tại chỗ
-	header("Auto-Fishers (wear out, buy again)")
-	for tierIndex, tier in ipairs(fisherCfg.Tiers) do
-		addRow(
-			("<b>%s Auto-Fisher</b>  (up to %s)\n%ds / chest, holds %d, lasts %d chests"):format(tier.Name, topChestName(tier.Odds), tier.Interval, tier.Capacity, tier.Durability),
-			{ { Text = commas(tier.Price), Color = COLORS.Green, OnClick = function()
-				request("BuyAutoFisher", tierIndex)
-			end } }
-		)
-	end
-	for slot = 1, pedestals do
-		local entry = profile.AutoFishers[tostring(slot)]
-		if entry then
-			local tier = fisherCfg.Tiers[entry.Tier]
-			local nextTier = fisherCfg.Tiers[entry.Tier + 1]
-			local ratio = entry.Durability / tier.Durability
-			addRow(
-				("<b>Machine #%d: %s</b>\n%s"):format(slot, tier.Name, nextTier and ("Upgrade to %s restores durability"):format(nextTier.Name) or "Best machine"),
-				{ nextTier and { Text = commas(nextTier.Price - tier.Price), Color = COLORS.Green, OnClick = function()
-					request("UpgradeAutoFisher", slot)
-				end } or { Text = "Max", Disabled = true } },
-				{ Ratio = ratio, Color = Config.DurabilityColor(ratio), Label = ("%d/%d"):format(entry.Durability, tier.Durability) }
-			)
-		end
-	end
+	-- Chìa vạn năng: để cướp nhà người khác. (Khóa cửa nhà mình làm ở nhà: bảng Build)
+	header("🔑 Master Key")
+	local robbery = addShopGrid()
+	addShopCard(robbery, {
+		Emoji = "🔑",
+		Name = ("Master Key (have %d)"):format(profile.Keys or 0),
+		Info = ("Opens a rival's Stash or machine, %d%% chance. One key per try."):format(math.floor(Config.LockInfo(0).OpenChance * 100 + 0.5)),
+		Rank = 5,
+		Buttons = {
+			{ Text = "x1 " .. commas(Config.Robbery.KeyPrice), Color = COLORS.Green, OnClick = function()
+				request("BuyKey", 1)
+			end },
+			{ Text = "x5 " .. commas(Config.Robbery.KeyPrice * 5), Color = COLORS.Orange, OnClick = function()
+				request("BuyKey", 5)
+			end },
+		},
+	})
 
 	-- Trang bị (Config.Gear)
-	header("Gear")
+	header("👟 Gear")
+	local gears = addShopGrid()
 	for id, gear in pairs(Config.Gear) do
 		local hasGear = profile.Gear and profile.Gear[id]
-		addRow(
-			("<b>%s</b>\nMove %d%% faster (walk and sprint)"):format(gear.Name, math.floor(gear.SpeedBonus * 100 + 0.5)),
-			{ hasGear and { Text = "Owned", Disabled = true } or { Text = commas(gear.Price), Color = COLORS.Green, OnClick = function()
+		addShopCard(gears, {
+			Emoji = "👟",
+			Name = gear.Name,
+			Info = ("Move %d%% faster (walk and sprint)."):format(math.floor(gear.SpeedBonus * 100 + 0.5)),
+			Rank = 5,
+			Buttons = { hasGear and { Text = "Owned", Disabled = true } or { Text = commas(gear.Price), Color = COLORS.Green, OnClick = function()
 				request("BuyGear", id)
-			end } }
-		)
+			end } },
+		})
+	end
+end
+
+-- Bảng mua / nâng cấp ở NHÀ, mở từ bệ máy ấp ([E]), ổ máy ([E]), máy câu ([G]), biển tên nhà ([E]). data = { Kind, Slot }
+renderers.Build = function(data)
+	local fisherCfg = Config.AutoFisher
+	local slot = data.Slot
+	if data.Kind == "Incubator" then
+		header(("🥚 Incubator #%d"):format(slot))
+		local grid = addShopGrid()
+		local slots = profile.IncubatorSlots
+		local price = Config.Incubators.Prices[slot] or 0
+		local unlockButton
+		local info = "Hatch more eggs at the same time."
+		if slot <= slots then
+			unlockButton = { Text = "Unlocked", Disabled = true }
+		elseif slot == slots + 1 then
+			unlockButton = { Text = commas(price), Color = COLORS.Green, OnClick = function()
+				if request("BuyIncubator") then
+					closePanel()
+				end
+			end }
+		else
+			unlockButton = { Text = "Locked", Disabled = true }
+			info = ("Unlock incubator #%d first."):format(slots + 1)
+		end
+		addShopCard(grid, { Model = "Incubator", Name = ("Incubator #%d"):format(slot), Info = info, Rank = 3, Buttons = { unlockButton } })
+	elseif data.Kind == "Pedestal" then
+		header(("⚙️ Machine Pedestal #%d"):format(slot))
+		if slot > profile.FisherSlots then
+			local grid = addShopGrid()
+			local price = fisherCfg.PedestalPrices[slot]
+			local canUnlock = slot == profile.FisherSlots + 1
+			addShopCard(grid, {
+				Emoji = "🧱",
+				Name = ("Pedestal #%d"):format(slot),
+				Info = canUnlock and "A place for one Auto-Fisher at your pond." or ("Unlock pedestal #%d first."):format(profile.FisherSlots + 1),
+				Rank = 2,
+				Buttons = { canUnlock and { Text = commas(price or 0), Color = COLORS.Green, OnClick = function()
+					if request("BuyFisherSlot") then
+						closePanel()
+					end
+				end } or { Text = "Locked", Disabled = true } },
+			})
+		elseif profile.AutoFishers[tostring(slot)] then
+			addRow("This pedestal already has a machine. Press G on the machine to upgrade it.", {})
+		else
+			header("Pick a machine (they wear out, buy again)")
+			local grid = addShopGrid()
+			for tierIndex, tier in ipairs(fisherCfg.Tiers) do
+				addShopCard(grid, {
+					Model = "AutoFisher_" .. tier.Name,
+					Name = tier.Name .. " Auto-Fisher",
+					Info = ("Up to %s chests\n%ds per chest, holds %d\nLasts %d chests"):format(topChestName(tier.Odds), tier.Interval, tier.Capacity, tier.Durability),
+					Rank = tierIndex,
+					Buttons = { { Text = commas(tier.Price), Color = COLORS.Green, OnClick = function()
+						if request("BuyAutoFisher", tierIndex, slot) then
+							closePanel()
+						end
+					end } },
+				})
+			end
+		end
+	elseif data.Kind == "Machine" then
+		local entry = profile.AutoFishers[tostring(slot)]
+		header(("⚙️ Machine #%d"):format(slot))
+		if not entry then
+			addRow("There is no machine here anymore.", {})
+			return
+		end
+		local grid = addShopGrid()
+		local tier = fisherCfg.Tiers[entry.Tier]
+		local nextTier = fisherCfg.Tiers[entry.Tier + 1]
+		local ratio = entry.Durability / tier.Durability
+		addShopCard(grid, {
+			Model = "AutoFisher_" .. tier.Name,
+			Name = tier.Name .. " Auto-Fisher",
+			Info = nextTier and ("Upgrade to %s: restores durability and keeps your chests."):format(nextTier.Name) or "Best machine!",
+			Rank = entry.Tier,
+			Bar = { Ratio = ratio, Color = Config.DurabilityColor(ratio), Label = ("%d/%d"):format(entry.Durability, tier.Durability) },
+			Buttons = { nextTier and { Text = "Upgrade " .. commas(nextTier.Price - tier.Price), Color = COLORS.Green, OnClick = function()
+				request("UpgradeAutoFisher", slot)
+			end } or { Text = "Max", Disabled = true } },
+		})
+	elseif data.Kind == "House" then
+		header("🔒 Door Lock")
+		local grid = addShopGrid()
+		local lockLevel = profile.LockLevel or 0
+		local nextLock = Config.LockInfo(lockLevel + 1)
+		addShopCard(grid, {
+			Emoji = "🔒",
+			Name = "Door Lock: " .. Config.LockInfo(lockLevel).Name,
+			Info = ("Thieves open your door %d%% of the time."):format(math.floor(Config.LockInfo(lockLevel).OpenChance * 100 + 0.5)),
+			Rank = lockLevel + 2,
+			Buttons = { nextLock and { Text = commas(nextLock.Price), Color = COLORS.Green, OnClick = function()
+				request("BuyLock")
+			end } or { Text = "Max", Disabled = true } },
+		})
 	end
 end
 
@@ -1070,6 +1251,46 @@ renderers.Hatch = function(data)
 	end
 end
 
+-- Kho nhà: rương chưa mở, rarest trước. Nút Open mở 1 rương, Open All mở hết loại đó (server kiểm tra đứng gần Stash)
+renderers.Stash = function()
+	header(("📦 Chests in your Stash: %d"):format(totalStashChests()))
+	local any = false
+	for i = #Config.Chests, 1, -1 do
+		local chest = Config.Chests[i]
+		local count = profile.Chests and profile.Chests[chest.Name] or 0
+		if count > 0 then
+			any = true
+			addRow(("<b>%s</b> x%d\n%d-%d coins, may hold an egg"):format(chest.Name, count, chest.Coins[1], chest.Coins[2]), {
+				{ Text = "Open", Color = COLORS.Green, OnClick = function()
+					request("OpenChest", chest.Name, false)
+				end },
+				{ Text = "Open all", Color = COLORS.Orange, Disabled = count < 2, OnClick = function()
+					request("OpenChest", chest.Name, true)
+				end },
+			})
+		end
+	end
+	if not any then
+		addRow("No chests yet. Haul some up at the lake and bring them home!", {})
+	end
+end
+
+-- Bảng cướp: danh sách món của nhà người khác sau khi mở khóa. Bấm Take: server đợi vài giây (phải đứng gần) rồi bỏ món vào túi
+renderers.Rob = function(data)
+	header(("🔑 Robbing %s's house"):format(data.Owner))
+	addRow(("Bag: %d/%d. Run home and stash your loot before the goose catches you!"):format(bagCount, bagCapacity), {})
+	if #data.Items == 0 then
+		addRow("Nothing left to take here.", {})
+	end
+	for _, item in ipairs(data.Items) do
+		addRow(("<b>%s</b> x%d"):format(item.Label, item.Count), {
+			{ Text = "Take", Color = COLORS.Red, Disabled = bagCount >= bagCapacity, OnClick = function()
+				request("RobTake", data.OwnerId, data.Target, item.Key)
+			end },
+		})
+	end
+end
+
 -- Hạng màu viền của pet = thứ tự trứng nở ra nó (Config.EggOrder)
 local function petRank(petName)
 	for rank, tier in ipairs(Config.EggOrder) do
@@ -1083,9 +1304,12 @@ local function petRank(petName)
 end
 
 renderers.Bag = function()
-	header(("💰 Coins: %s"):format(commas(profile.Coins)))
+	header(("💰 Coins: %s   🔑 Keys: %d"):format(commas(profile.Coins), profile.Keys or 0))
 	if bagCount > 0 then
 		addRow(("🎒 <b>Carrying %d chest(s)</b>\nDeposit them at your Stash or the goose may take them!"):format(bagCount), {})
+	end
+	if totalStashChests() > 0 then
+		addRow(("📦 <b>%d chest(s) waiting in your Stash</b>\nOpen them at home (press E at the Stash)."):format(totalStashChests()), {})
 	end
 
 	-- Trứng: đủ mọi loại, loại chưa có hiện bóng đen
@@ -1115,6 +1339,7 @@ renderers.Bag = function()
 		addCell(pets, {
 			Model = pet.Name,
 			Name = pet.Name,
+			Sub = Config.Pet.Stats[pet.Name] and Config.Pet.Stats[pet.Name].Perk and Config.Pet.Stats[pet.Name].Perk.Name,
 			Bars = {
 				{ Ratio = hpRatio, Color = hpColor(hpRatio) },
 				{ Ratio = durabilityRatio, Color = Config.DurabilityColor(durabilityRatio) },
@@ -1169,7 +1394,7 @@ renderers.Bag = function()
 	end
 end
 
-local TITLES = { Shop = "🛒 Tool Shop", Market = "💰 Market", Hatch = "🥚 Hatchery", Bag = "🎒 My Bag" }
+local TITLES = { Shop = "🛒 Tool Shop", Market = "💰 Market", Hatch = "🥚 Hatchery", Bag = "🎒 My Bag", Stash = "📦 Stash", Rob = "🔑 Break-in", Build = "🏠 Home Upgrades" }
 
 local function render()
 	for _, child in ipairs(list:GetChildren()) do
@@ -1189,7 +1414,9 @@ local function openPanel(kind, data)
 	end
 	current = { Kind = kind, Data = data }
 	title.Text = TITLES[kind]
-	local base = panelBaseScale()
+	local size = PANEL_SIZES[kind] or DEFAULT_PANEL_SIZE
+	panel.Size = UDim2.fromOffset(size.X, size.Y)
+	local base = panelBaseScale(size)
 	panelScale.Scale = base * 0.8
 	panel.Visible = true
 	TweenService:Create(panelScale, BOUNCE, { Scale = base }):Play()
@@ -1287,9 +1514,9 @@ end)
 
 -- ===== Hướng dẫn người mới (profile.Tutorial: 1..3 đang làm, 99 = xong; xem Tutorial.lua) =====
 local TUTORIAL_STEPS = {
-	"Hatch your free Reed Egg: go to the Hatchery behind your house and press E on the incubator.",
+	"Hatch your free Reed Egg: go to the glass nursery beside your house and press E on the incubator.",
 	"Go to the lake. Stand on the path facing a bubbling CHEST spot and HOLD the big FISH button. If the goose honks, let go!",
-	"Run your loot home and press E at your Stash (front yard) to keep it.",
+	"Run your loot home and go inside and press E at the big chest in your vault room to store it, then open your chests there.",
 }
 local tutorialFrame = make("Frame", {
 	Size = UDim2.fromOffset(280, 0),
@@ -1335,6 +1562,35 @@ local function refreshTutorial()
 	end
 end
 
+-- Đồng hồ đang ở trong sân nhà người khác (server gửi Effect "Trespass" mỗi 0.5 giây)
+local trespassLabel = make("TextLabel", {
+	Size = UDim2.fromOffset(300, 44),
+	Position = UDim2.new(0.5, 0, 0, 80),
+	AnchorPoint = Vector2.new(0.5, 0),
+	BackgroundColor3 = COLORS.Red,
+	Font = Enum.Font.GothamBlack,
+	TextSize = 22,
+	TextColor3 = Color3.new(1, 1, 1),
+	Visible = false,
+}, gui)
+corner(trespassLabel, 22)
+make("UIStroke", { Color = COLORS.Outline, Thickness = 3 }, trespassLabel)
+
+local function onTrespass(data)
+	if not data.Left then
+		trespassLabel.Visible = false
+		return
+	end
+	trespassLabel.Visible = true
+	if data.Outside then
+		trespassLabel.BackgroundColor3 = COLORS.Orange
+		trespassLabel.Text = "Out of the yard. Cooling down..."
+	else
+		trespassLabel.BackgroundColor3 = data.Left <= 20 and COLORS.Red or COLORS.Orange
+		trespassLabel.Text = ("%s's yard: leave in %ds!"):format(data.Owner or "Their", math.ceil(data.Left))
+	end
+end
+
 -- ===== Nhận dữ liệu từ server =====
 local lastCoins = nil
 local function onSync(data)
@@ -1376,6 +1632,13 @@ remotes.Effect.OnClientEvent:Connect(function(kind, data)
 		refreshBag(data)
 	elseif kind == "Alert" then
 		setAlert(data.State)
+	elseif kind == "Trespass" then
+		onTrespass(data)
+	elseif kind == "RobUpdate" then
+		if current and current.Kind == "Rob" then
+			current.Data = data
+			render()
+		end
 	end
 end)
 

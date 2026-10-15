@@ -16,6 +16,8 @@ local Shop = require(Modules.Shop)
 local Market = require(Modules.Market)
 local Pets = require(Modules.Pets)
 local Bag = require(Modules.Bag)
+local Stash = require(Modules.Stash)
+local Robbery = require(Modules.Robbery)
 local SafeZone = require(Modules.SafeZone)
 local Guard = require(Modules.Guard)
 local NoSwim = require(Modules.NoSwim)
@@ -27,9 +29,20 @@ local map = MapBuilder.Build()
 Plots.Init(map, {
 	OnIncubator = Hatchery.OnPrompt,
 	OnFisher = AutoFishers.Collect,
-	OnStash = Bag.Deposit,
-	OnAssign = House.OnAssign, -- ổ pet, móc balo, kệ trưng bày, hộp thư quà hằng ngày
-	OnRelease = House.OnRelease,
+	-- Nút mua / nâng cấp ở nhà (bệ máy ấp, ổ máy, máy câu, biển tên): mở bảng "Build" trên client
+	OnBuild = function(player, kind, slot)
+		Remote.Effect(player, "OpenPanel", { Panel = "Build", Kind = kind, Slot = slot })
+	end,
+	OnRob = Robbery.OnPrompt, -- người khác bấm [F] ở Stash / máy câu: mở khóa bằng chìa, bảng cướp
+	OnStash = Stash.OnPrompt, -- cất rương trong túi vào kho, rồi mở bảng Stash
+	OnAssign = function(player, plot)
+		House.OnAssign(player, plot) -- ổ pet, móc balo, kệ trưng bày, hộp thư quà hằng ngày
+		Guard.SpawnHouse(player, plot) -- ngỗng nhà
+	end,
+	OnRelease = function(player, plot)
+		House.OnRelease(player, plot)
+		Guard.RemoveHouse(player)
+	end,
 })
 SafeZone.Init(map)
 Fishing.Init(map)
@@ -50,8 +63,11 @@ Guard.Init(map, {
 		end
 		return nil
 	end,
+	-- Kẻ cướp bị truy nã trong sân nhà người đó: ngỗng nhà của chủ đó được rượt
+	Wanted = Robbery.IsWanted,
 	OnCaught = function(player)
 		Fishing.Cancel(player)
+		Robbery.Reset(player)
 		local lost = Bag.Clear(player)
 		Plots.TeleportHome(player) -- bị bắt: về thẳng nhà mình
 		if lost > 0 then
@@ -61,6 +77,12 @@ Guard.Init(map, {
 		end
 	end,
 })
+
+-- Báo động cướp nhà: gọi ngỗng đồn cảnh sát đuổi kẻ cướp
+Robbery.SetAlarmHandler(function(thief)
+	Guard.CallPolice(thief)
+end)
+Robbery.Init()
 
 -- ===== Yêu cầu từ client (RemoteFunction "Action") =====
 -- Mỗi hàm trả về: ok (bool), message (string hiện lên màn hình)
@@ -77,7 +99,12 @@ local actions = {
 	BuyIncubator = Shop.BuyIncubator,
 	BuyBagUpgrade = Shop.BuyBagUpgrade,
 	BuyGear = Shop.BuyGear,
+	RobTake = Robbery.Take, -- (ownerUserId, target, itemKey) lấy 1 món sau khi mở khóa
+	BuyLock = Shop.BuyLock, -- nâng khóa cửa nhà lên cấp kế tiếp
+	BuyKey = Shop.BuyKey, -- (số lượng) mua Chìa vạn năng
 	StartHatch = Hatchery.StartHatch,
+	OpenChest = Stash.OpenChest, -- (tên rương, all) mở 1 rương trong kho nhà, all = true thì mở hết loại đó
+	OpenAllChests = Stash.OpenAll,
 	SellEgg = Market.SellEgg,
 	SellPet = Market.SellPet,
 	-- "Lake": ra hồ (tốn tiền) / "Shop": tới Tool Shop / "Plot": về nhà (miễn phí, chặn khi có đồ hoặc bị đuổi). Luật ở Teleports.lua
@@ -130,6 +157,8 @@ Players.PlayerRemoving:Connect(function(player)
 	Teleports.RemovePlayer(player)
 	Pets.RemovePlayer(player)
 	Bag.RemovePlayer(player)
+	Hatchery.RemovePlayer(player)
+	Robbery.RemovePlayer(player)
 	Plots.Release(player)
 	Data.Release(player)
 end)

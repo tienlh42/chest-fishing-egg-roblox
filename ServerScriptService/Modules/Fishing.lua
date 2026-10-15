@@ -13,6 +13,7 @@ local Models = require(ReplicatedStorage.Models)
 local Bag = require(script.Parent.Bag)
 local Data = require(script.Parent.Data)
 local Guard = require(script.Parent.Guard)
+local Loadout = require(script.Parent.Loadout)
 local Pets = require(script.Parent.Pets)
 local Remote = require(script.Parent.Remote)
 local SafeZone = require(script.Parent.SafeZone)
@@ -67,12 +68,12 @@ local function landingPoint(character, hrp)
 end
 
 -- Phao rơi vào đâu thì câu kiểu đó: "Pond" (ao plot), "Lake" (hồ cấm, ngoài vùng an toàn), hoặc nil + lý do
-local function spotFor(landing, position)
+local function spotFor(landing, position, player)
 	if inWater(pondWater, landing) then
 		return "Pond"
 	end
 	if inWater(lakeWater, landing) then
-		if SafeZone.Contains(position) then
+		if SafeZone.Contains(position, player) then
 			return nil, "You are still at home! Walk to the lake to fish."
 		end
 		return "Lake"
@@ -100,16 +101,17 @@ local function unfreeze(player)
 end
 
 -- Tung xúc xắc phần thưởng của 1 rương (chưa cộng vào đâu). Trả về coins, egg tier (hoặc nil)
-function Fishing.RollReward(chest)
-	local coins = math.random(chest.Coins[1], chest.Coins[2])
-	local egg = Config.RollChestEgg(chest) -- rương hiếm dễ ra trứng xịn (Config.Chests[].Eggs)
+function Fishing.RollReward(chest, player)
+	local perk = player and Loadout.Get(player)
+	local coins = math.floor(math.random(chest.Coins[1], chest.Coins[2]) * (perk and perk.CoinMult or 1) + 0.5)
+	local egg = Config.RollChestEgg(chest, perk and perk.EggChanceMult) -- rương hiếm dễ ra trứng xịn (Config.Chests[].Eggs)
 	return coins, egg
 end
 
 -- Cộng phần thưởng của 1 rương vào profile (chưa gọi Data.Update). Trả về coins, egg tier (hoặc nil)
 function Fishing.GiveChest(player, chest)
 	local profile = Data.Get(player)
-	local coins, egg = Fishing.RollReward(chest)
+	local coins, egg = Fishing.RollReward(chest, player)
 	profile.Coins += coins
 	if egg then
 		profile.Eggs[egg] = (profile.Eggs[egg] or 0) + 1
@@ -190,8 +192,7 @@ local function succeed(player, session)
 	local chest = session.Chest
 
 	if session.Spot == "Lake" then
-		local coins, egg = Fishing.RollReward(chest)
-		Bag.Add(player, { Chest = chest.Name, Coins = coins, Egg = egg })
+		Bag.Add(player, { Chest = chest.Name }) -- chưa tung nội dung: tung lúc mở ở Stash
 		Remote.Effect(player, "Catch", { Chest = chest.Name, Unsealed = true })
 		Remote.Notify(player, ("Hauled up a %s! Bag %d/%d. Carry it home to your Stash to open it."):format(chest.Name, Bag.Count(player), Bag.Capacity(player)))
 		Tutorial.Complete(player, "Lake")
@@ -233,10 +234,11 @@ local function step(player, session)
 	end
 
 	local moved = (hrp.Position - session.Origin).Magnitude
+	local perk = Loadout.Get(player)
 	if session.Paused then
-		if moved > Config.Fishing.Leash then
+		if moved > Config.Fishing.Leash + perk.Leash then
 			fail(player, "You walked too far! The line snapped.")
-		elseif os.clock() - session.PausedAt > Config.Fishing.PauseTimeout then
+		elseif os.clock() - session.PausedAt > Config.Fishing.PauseTimeout + perk.PauseTimeout then
 			fail(player, "You waited too long! The chest slipped off the hook.")
 		end
 		return -- tạm dừng: không tiến độ, không tiếng động
@@ -247,7 +249,7 @@ local function step(player, session)
 		return
 	end
 	local progress = progressOf(session)
-	if session.Spot == "Lake" and progress >= Config.Fishing.NoiseDelay and os.clock() >= session.NextNoise then
+	if session.Spot == "Lake" and progress >= Config.Fishing.NoiseDelay + perk.NoiseDelay and os.clock() >= session.NextNoise then
 		session.NextNoise = os.clock() + NOISE_EVERY
 		Guard.Noise(hrp.Position, Config.Fishing.NoiseRadius)
 	end
@@ -269,7 +271,7 @@ end)
 
 -- Đang tạm dừng mà nhấn lại: kéo tiếp từ chỗ cũ
 local function resume(player, session, hrp, humanoid)
-	if (hrp.Position - session.Origin).Magnitude > Config.Fishing.Leash then
+	if (hrp.Position - session.Origin).Magnitude > Config.Fishing.Leash + Loadout.Get(player).Leash then
 		return -- step() sẽ báo đứt dây
 	end
 	session.Paused = false
@@ -311,7 +313,7 @@ function Fishing.Press(player)
 		Remote.Notify(player, landReason)
 		return
 	end
-	local spot, reason = spotFor(landing, hrp.Position)
+	local spot, reason = spotFor(landing, hrp.Position, player)
 	if not spot then
 		Remote.Notify(player, reason)
 		return
@@ -392,8 +394,8 @@ function Fishing.Release(player)
 		Chest = session.Chest.Name,
 		Progress = session.Progress,
 		Duration = session.Duration,
-		Timeout = Config.Fishing.PauseTimeout,
-		Leash = Config.Fishing.Leash,
+		Timeout = Config.Fishing.PauseTimeout + Loadout.Get(player).PauseTimeout,
+		Leash = Config.Fishing.Leash + Loadout.Get(player).Leash,
 	})
 end
 

@@ -1,5 +1,6 @@
 -- ModuleScript: ServerScriptService > Modules > Shop
--- Tool Shop: mua/chọn cần câu, chọn pet đi theo, mở thêm máy ấp, nâng cấp túi, trang bị (Dép Tên Lửa).
+-- Tool Shop: CHỈ MUA ĐỒ (cần câu, túi lớn hơn, Chìa vạn năng, Dép Tên Lửa) + chọn cần / pet đang dùng.
+-- Mở máy ấp, ổ máy, mua / nâng cấp máy câu, khóa cửa làm Ở NHÀ (bấm [E] / [G] trên bệ, máy, biển tên nhà: Plots.lua), phải đứng trong sân nhà mình.
 
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Config = require(ReplicatedStorage.Config)
@@ -71,6 +72,9 @@ function Shop.EquipPet(player, id)
 end
 
 function Shop.BuyIncubator(player)
+	if not Plots.IsHome(player) then
+		return false, "Go to your house to unlock an incubator."
+	end
 	local profile = Data.Get(player)
 	local nextSlot = profile.IncubatorSlots + 1
 	if nextSlot > Config.Incubators.MaxSlots then
@@ -100,6 +104,38 @@ function Shop.BuyBagUpgrade(player)
 	Data.Update(player)
 	Bag.Sync(player)
 	return true, ("Bag upgraded! It now holds %d chests."):format(upgrade.Capacity)
+end
+
+-- Mua Chìa vạn năng (Config.Robbery.KeyPrice) để cướp nhà người khác
+function Shop.BuyKey(player, amount)
+	local profile = Data.Get(player)
+	amount = typeof(amount) == "number" and amount % 1 == 0 and math.clamp(amount, 1, 20) or 1
+	local price = Config.Robbery.KeyPrice * amount
+	if not Data.Spend(player, price) then
+		return false, ("Not enough coins (need %d)."):format(price)
+	end
+	profile.Keys += amount
+	Data.Update(player)
+	return true, ("Bought %d Master Key%s! You have %d."):format(amount, amount == 1 and "" or "s", profile.Keys)
+end
+
+-- Nâng khóa cửa nhà lên cấp kế tiếp (Config.Robbery.Locks): giảm tỉ lệ mở của Chìa vạn năng khi người khác cướp nhà mình
+function Shop.BuyLock(player)
+	if not Plots.IsHome(player) then
+		return false, "Go to your house to install a lock."
+	end
+	local profile = Data.Get(player)
+	local nextLock = Config.LockInfo(profile.LockLevel + 1)
+	if not nextLock then
+		return false, "Your door lock is already the strongest!"
+	end
+	if not Data.Spend(player, nextLock.Price) then
+		return false, ("Not enough coins (need %d)."):format(nextLock.Price)
+	end
+	profile.LockLevel += 1
+	Data.Update(player)
+	Plots.UpdateLock(player) -- ổ khóa ở cửa to dần
+	return true, ("%s installed! Thieves now open your door only %d%% of the time."):format(nextLock.Name, math.floor(nextLock.OpenChance * 100 + 0.5))
 end
 
 -- Trang bị (Config.Gear): mua 1 lần, có là dùng luôn. Tốc chạy áp ở Sprint.client.lua (đọc profile.Gear)

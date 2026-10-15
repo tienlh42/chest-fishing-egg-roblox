@@ -18,4 +18,9 @@ function Remote.Effect(player, kind, data)
 	remotes.Effect:FireClient(player, kind, data)
 end
 
+-- Như Effect nhưng gửi cho MỌI người chơi (để hàng xóm cũng thấy hoạt ảnh ở nhà người khác)
+function Remote.EffectAll(kind, data)
+	remotes.Effect:FireAllClients(kind, data)
+end
+
 return Remote

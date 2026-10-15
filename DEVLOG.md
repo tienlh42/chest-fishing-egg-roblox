@@ -6,6 +6,164 @@
 
 ---
 
+## #46 · 15/10/2026 · Thiết kế lại nhà: sông vòng quanh, bến máy câu, hiên ấp, máy ấp có hoạt ảnh, biển tên trên nóc, rương trong nhà
+**Yêu cầu:** thiết kế lại home theo đề xuất (xem `HOME_DESIGN.md`): sông chảy vòng quanh các nhà, bệ máy câu ráp mặt sông trong khuôn viên, khu ấp trứng có slot ấp, dựng model máy ấp + animation nở và vỡ máy ấp, tên người chơi là biển to trên nóc, rương nằm trong nhà.
+
+**Đã làm:**
+- **Sông (`ParkBuilder.BuildRiver`, `Config.River`):** elip ngoài vòng nhà (Rx 283, Rz 267, rộng 16), 96 đoạn Terrain nước thật; `River.client.lua` cho lá + 8 vịt cao su trôi theo dòng. Ao riêng bỏ.
+- **Plot mới (`HouseBuilder.lua`):** bến gỗ sát sông với 5 bệ máy câu (`FisherSlot1..5`) và marker `Water` (đoạn sông trước bến = câu tay "Pond"), vườn sau nhà, hàng rào bỏ cạnh sau, hiên kính 4 bệ ấp (`IncubatorSlot1..4`), hộp thư trang trí.
+- **Biển tên trên nóc:** Part `Sign` 30x8 hai mặt, ảnh avatar + tên chủ nhà, mỗi nhà một màu viền, nhà trống "FOR RENT" (`Plots.setSign`).
+- **Phòng rương trong nhà:** Stash (rương lớn) ở tường sau, giá `VaultSlot1..5` trưng chồng rương theo hạng kèm "xN" (`Plots.renderVault`, cập nhật theo `profile.Chests`). Ổ khóa `DoorLock` ở cửa to dần theo cấp khóa (`Plots.UpdateLock`), nút nâng khóa chuyển lên ổ khóa. Tutorial đổi chữ.
+- **Máy ấp "Tổ Ấm" (`IncubatorBuilder.lua`) + hoạt ảnh (`IncubatorAnimator.client.lua`):** vòm kính, đế tổ rơm có mắt / miệng, đèn sưởi. Hoạt ảnh lặp theo `State` / `Progress`; **hoạt ảnh nở 5 giây**: dồn nhịp, bùng nổ làm vòm kính vỡ thành mảnh + vỏ trứng vỡ + hạt lấp lánh (cầu vồng cho Gold / Dragon), đế chóng mặt, vòm mới phồng lên. `Hatchery.lua`: chốt pet ngay lúc nhận, `Remote.EffectAll("IncubatorHatch")`, pet bật ra lúc `BurstAt`, dựng lại máy sau `Duration`, chặn bấm / ấp lại trong lúc nở.
+
+**File:** `HouseBuilder.lua`, `IncubatorBuilder.lua` (mới), `IncubatorAnimator.client.lua` (mới), `River.client.lua` (mới), `ParkBuilder.lua`, `MapBuilder.lua`, `Plots.lua`, `Hatchery.lua`, `House.lua`, `Shop.lua`, `BuildUtil.lua`, `Remote.lua`, `Config.lua`, `MainUI.client.lua`. Docs: `HOME_DESIGN.md` (mới), `PROJECT_OVERVIEW.md`, `TASKS.md`.
+
+**Đã kiểm tra:** `selene .` 0 lỗi. Play: biển tên hiện đúng (avatar + tên, đọc được từ xa), sông + bến + bệ máy câu đúng chỗ, hiên kính với máy ấp có trứng (Dragon, Gold) đứng thẳng, hoạt ảnh nở chạy (vòm biến mất, pet bật ra), phòng rương trưng đúng chồng rương và số lượng, mở hết rương thì giá trống, mua khóa làm ổ khóa to và đổi vật liệu, các nút [E] / [G] trên bệ đúng chỗ. Sửa lỗi gặp: pivot máy ấp, tranh chấp khởi tạo của animator.
+**Chưa kiểm tra:** từng khung hình hoạt ảnh nở (chỉ thấy kết quả), mảnh kính bay (chụp màn hình không bắt được), ngỗng nhà đi vòng có vướng bàn / cây mới không, cảm giác câu tay ở bến, hiệu năng mobile, 2 người chơi.
+
+**Lưu ý:** Stash vào trong nhà nên cất rương xa hơn ~30 stud (có thể chỉnh vị trí phòng rương). Không còn model `Hatched` asset của trứng chạy (đã bỏ animation Hatch của egg, dùng hiệu ứng riêng).
+
+---
+
+## #45 · 15/10/2026 · Thông báo luôn trên cùng; Shop chỉ mua đồ, máy câu / máy ấp / khóa mua và nâng cấp ở nhà
+**Yêu cầu:** thông báo hệ thống phải overlay trên cùng; shop chỉ cho mua đồ, không nâng cấp; máy câu mua và nâng cấp ở nhà, máy ấp cũng vậy.
+
+**Đã làm:**
+- **Toast trên cùng (`MainUI.client.lua`):** thông báo hệ thống nằm trong ScreenGui riêng `MainUIOverlay` (`DisplayOrder = 100`), nên luôn đè lên mọi bảng (Shop, Bag, Stash, Build...).
+- **Shop chỉ còn:** cần câu, túi lớn hơn, Chìa vạn năng, Dép Tên Lửa. Đã bỏ khỏi Shop: ổ máy, máy ấp, máy câu (mua và nâng tier), khóa cửa.
+- **Mua / nâng cấp ở nhà (`Plots.lua`, bảng "Build" mới, `Main.server.lua` `OnBuild`):**
+  - Bệ máy ấp đang khóa: nút [E] "Unlock" (mở theo thứ tự).
+  - Ổ máy đang khóa: [E] "Unlock"; ổ đã mở mà trống: [E] "Buy machine" mở danh sách 5 tier để mua **đúng vào ổ đó** (`BuyAutoFisher(tier, slot)`).
+  - Máy đang có: giữ [E] thu rương như cũ, thêm [G] "Upgrade" mở bảng nâng tier.
+  - Biển tên nhà (Part `Sign`): [E] "Upgrade house" mở bảng khóa cửa.
+  - Nhãn trên bệ đổi thành "[E] Unlock" / "[E] Buy a machine".
+- **Chặn ở server:** `Plots.IsHome(player)` (phải đứng trong sân nhà mình): `Shop.BuyIncubator`, `Shop.BuyLock`, `AutoFishers.UnlockSlot / Buy / Upgrade` từ chối khi ở xa nhà ("Go to your house...").
+
+**File:** `MainUI.client.lua`, `Plots.lua`, `AutoFishers.lua`, `Shop.lua`, `Main.server.lua`. Docs: `PROJECT_OVERVIEW.md`, `TASKS.md`.
+
+**Đã kiểm tra:** `selene .` 0 lỗi. Play: có 9 nút mua / nâng cấp trên plot; ở xa nhà mua máy ấp / máy / khóa đều bị từ chối; ở nhà mua máy ấp, mở ổ, mua máy vào ổ 2, nâng tier đều chạy; Refresh nhiều lần không nhân đôi nút; bảng Build hiện đúng, toast hiện đè trên bảng. **Chưa test:** bấm [E] / [G] thật trên bệ, bảng Incubator / Machine / House, hình ổ khóa khi tắt Play.
+
+**Lưu ý:** Bigger Bag vẫn ở Shop (coi như đồ mang theo); nếu muốn chuyển về nhà thì báo em. Tutorial / thông báo cũ nhắc "Tool Shop" cho máy đã đổi (nhãn bệ, thông báo máy hỏng).
+
+---
+
+## #44 · 15/10/2026 · Khu chợ: Tool Shop và Market sát nhau, người bán vịt / mèo
+**Yêu cầu:** dựng mô hình shop và người bán theo style game (đồng ý đề xuất), gom 2 cửa hàng bán và mua gần nhau.
+
+**Đã làm:**
+- **`ShopBuilder.lua` (mới)** dựng **quảng trường** 2 gian 26x22 sát nhau (cách tâm ±15) ở khe góc 225° (chỗ Tool Shop cũ, trước điểm hồi sinh). **Bỏ Market cũ ở góc 45°** (và lối vào riêng). `MapBuilder.lua`: bỏ `buildStall`, `PLAZA_ANGLE` thay `TOOLSHOP_ANGLE` / `MARKET_ANGLE`; điểm đáp `ShopArrival` giờ ở giữa quảng trường. Tên Model `ToolShop` / `Market` và Part `PromptPart` giữ nguyên nên `Shop.lua`, `Market.lua`, `Teleports.lua` không đổi.
+- **Tool Shop** (mái xanh biển): biển **cá khổng lồ há miệng** có mắt đốm sáng trên mái, tường sau trưng bày **6 cần** đúng thứ tự `Config.Rods` (model thật qua `Models.Get`, đèn dưới mỗi cần theo màu hạng), 2 máy câu Common / Mythic hai bên, xô cá.
+- **Market** (mái đỏ): biển **đồng xu vàng có tai mèo**, rổ trứng 5 loại trên quầy, bảng "WE BUY EGGS & PETS".
+- **Người bán:** **Bác Vịt Câu Cá** (mũ nhỏ tụt lệch cắm 3 cần, ghi-lê navy, thắt lưng móc câu) và **Cô Mèo Thu Mua** (kính tròn, mũ lưỡi trai xanh, cà vạt đỏ, đuôi cong). Màu theo STYLE_GUIDE, mắt có đốm sáng, viền `Highlight`, đứng nhún nhẹ bằng tag `Bobbing`.
+- Quảng trường lát gạch, 2 đèn đường, mép mái cuốn sóng (bóng tròn xen màu).
+
+**Đã kiểm tra:** `selene .` 0 lỗi; Play: map dựng, không lỗi script, chụp màn hình thấy quảng trường, 2 biển, mèo và rổ trứng. Chưa xem kỹ: vịt và tường trưng bày cần (chụp bị timeout).
+
+**Chưa làm:** người bán phản ứng khi mở shop; cần trên tường sáng theo cần đã mua (phải làm phía client); animation Idle riêng. Người bán nhỏ và nằm sau quầy nên chỉ thấy nửa thân: có thể kê cao bục hoặc đổi vị trí khi anh xem.
+
+---
+
+## #43 · 15/10/2026 · Tool Shop rộng hơn, thẻ có hình model như Bag
+**Yêu cầu:** UI Shop hiển thị rộng ra và kèm model giống Bag.
+
+**Đã làm (`MainUI.client.lua`):** bảng Shop rộng 800x580 (`PANEL_SIZES`, bảng khác vẫn 460x480, tự co theo màn hình). Mỗi món là **thẻ** trong lưới 3 cột (`addShopGrid` / `addShopCard`): hình model 3D (cùng `modelIcon` / `iconModel` của Bag, thêm tham số chiều cao), tên, mô tả, thanh độ bền (cần / máy đang có), nút mua / Equip / Upgrade, viền màu theo hạng. Nhóm: Fishing Rods (model cần, perk hiện trong mô tả), Plot Upgrades (ổ máy, máy ấp có model `Incubator`, túi), Auto-Fishers (model `AutoFisher_<tier>`, kèm thẻ máy đang có để nâng tier), Robbery (khóa cửa, chìa), Gear. Ổ máy, túi, khóa, chìa, giày dùng emoji vì chưa có model.
+
+**Đã kiểm tra:** `selene .` 0 lỗi; chụp màn hình Play: phần Fishing Rods, Plot Upgrades và Auto-Fishers hiển thị đúng (model, chữ, nút). Chưa xem phần Robbery, Gear và thẻ máy đang có.
+
+---
+
+## #42 · 15/10/2026 · Ngỗng nhà, ngỗng đồn, khóa cửa, perk (bước 7)
+**Yêu cầu:** "làm hết luồng", anh test và chỉnh từng phần sau.
+
+**Đã làm:**
+- **`Guard.lua` nhiều loại ngỗng (`g.Kind`):** `Lake` (như cũ), `House`, `Police`. `Noise`, `Positions`, `Recall` chỉ dành cho ngỗng hồ.
+  - **Ngỗng nhà** (`Guard.SpawnHouse` / `RemoveHouse`, nối qua `OnAssign` / `OnRelease` trong `Main`): mỗi plot có chủ 1 con, đi vòng tròn bán kính 36 quanh tâm plot (12 điểm, `Config.Guard.House`), bỏ qua chủ nhà. Chỉ rượt người **bị truy nã** (`Robbery.IsWanted`: đã thử khóa, hoặc hết 60 giây trong sân), không cần nhìn thấy. Không bám quá 60 stud tính từ tâm plot.
+  - **Ngỗng đồn** (`Guard.CallPolice`): sinh ở điểm cạnh Spawn khi có báo động, tối đa 3 con đuổi cùng 1 kẻ cướp (thêm 1 con mỗi lần lấy được món), biến mất sau `Police.Lifetime` 45 giây hoặc khi mất dấu / người đó vào vùng an toàn.
+  - Bị bắt (`OnCaught`) gọi thêm `Robbery.Reset`. Hết 60 giây trong sân không còn tự dịch về nhà (thay cho xử tạm ở #41): ngỗng nhà lo.
+- **Khóa cửa:** `Shop.BuyLock` (Action `BuyLock`) nâng `profile.LockLevel` lên cấp kế (3000 / 10000 / 30000), Tool Shop có hàng "Door Lock". Tỉ lệ mở của chìa đã đọc `LockLevel` của chủ nhà từ #41.
+- **Perk (`Loadout.lua`, `Perk` trong `Config.Rods` và `Config.Pet.Stats`):** `Loadout.Get(player)` gộp perk cần + pet. Đã nối: `NoiseDelay`, `Leash`, `PauseTimeout` (Fishing), `CoinMult`, `EggChanceMult` (`Fishing.RollReward` / `GiveChest`, tức khi mở rương, kể cả ao và máy câu), `SightMult` (Guard), `StunEvery`, `StunTime`, `DamageTaken`, `LoseTimeMult` (Guard.fight / chase). Cần: Catfish +2s tiếng động, Turtle dây dài, Fox ngỗng nhìn kém 25%, Lucky Cat +20% coins, Dragon +10% xác suất trứng. Pet: Baker Dog / K9 Dog khựng 4s, Muscle Duck chịu đòn -20%, Magician Cat khựng 2.2s, Office Dragon ngỗng bỏ cuộc nhanh gấp đôi. UI: Shop hiện perk cần, Bag hiện tên perk pet.
+
+**File:** `Guard.lua`, `Robbery.lua`, `Loadout.lua` (mới), `Fishing.lua`, `Shop.lua`, `Config.lua`, `Main.server.lua`, `MainUI.client.lua`. Docs: `PROJECT_OVERVIEW.md`, `ECONOMY_DESIGN.md`, `SYSTEM_DESIGN.md`, `TASKS.md`.
+
+**Đã kiểm tra:** `selene .` 0 lỗi; Play thử khói: ngỗng hồ x1 + ngỗng nhà x1 sinh ra, không lỗi script; `Loadout` trả đúng (Fox + Muscle Duck: tầm nhìn 0.75, sát thương 0.8); `CallPolice` gọi 5 lần chỉ ra 3 ngỗng đồn. **Chưa test:** ngỗng nhà / đồn thật sự đuổi kẻ cướp, pathfinding quanh ao và đồ trong sân, mua khóa, nhìn UI.
+
+**Anh nên test (và chỉnh số trong `Config.lua`):**
+1. 2 người chơi: B mua chìa, vào sân A, bấm [F] ở Stash: ngỗng đồn có xuất hiện từ gần Spawn và chạy tới không, ngỗng nhà có rượt không, A có nhận thông báo không.
+2. Ngỗng nhà đi vòng có bị kẹt ở ao / kệ / cây không (đổi `Config.Guard.House.Radius`).
+3. B lấy món rồi chạy về nhà B: thoát được không (`Police.Lifetime`, `ChaseSpeed`), bị bắt thì đồ có về kho A không.
+4. Cảm giác perk: Fox, Turtle, Dragon, Muscle Duck.
+
+**Chưa làm / quyết định:**
+- **Thang nghi ngờ đầy đủ** (SYSTEM_DESIGN 8.3) chưa làm: ngỗng nhà chỉ rượt khi bị truy nã. Người lảng vảng sân người khác mà không thử khóa chỉ bị rượt sau 60 giây.
+- Perk K9 `WarnRange` chưa làm. Chưa có công trình đồn cảnh sát trên map (ngỗng đồn xuất phát gần Spawn). Chưa hiện số chìa / cấp khóa trên HUD chính.
+- Ngỗng nhà dùng cùng model ngỗng hồ (đặt tên khác để phân biệt trong Explorer). Tổng số ngỗng chưa có trần cứng (8 nhà + 1 hồ + tối đa 3 đồn mỗi kẻ cướp).
+
+---
+
+## #41 · 15/10/2026 · Cướp nhà, phần 2: Robbery.lua, bảng cướp, đồng hồ sân, trả đồ (6.4 đến 6.9)
+**Yêu cầu:** "tiếp" bước 6 (cướp nhà).
+
+**Đã làm:**
+- **`Robbery.lua` (mới):** nút [F] "Pick lock" ở **Stash** và **từng máy câu** của chủ nhà đang online (`Plots.makeRobPrompt`, attribute `RobOwnerId`, client chỉ bật nút này với người khác chủ). Bấm thì kiểm tra (không phải chủ, chủ online, hướng dẫn xong, không có khiên, đứng trong sân đó, còn chìa, chưa quá `MaxTries`), **tiêu 1 chìa**, mở với xác suất theo `Config.LockInfo(chủ.LockLevel)`. Mở rồi thì bấm lại nút không tốn chìa nữa trong lượt vào sân đó.
+- **Lấy đồ (`Robbery.Take`, Action `RobTake(ownerUserId, target, itemKey)`):** kẻ cướp tự chọn rương (theo hạng) / trứng ở Stash, hoặc 1 rương ở kho máy câu (rương tung theo `Odds` của tier lúc lấy). Server **đợi `GrabTime` 3 giây**, kiểm tra còn đứng gần và chủ còn ở đó, rồi mới trừ khỏi chủ nhà và bỏ vào **túi kẻ cướp** (`Bag` giờ chứa cả trứng, món cướp có `Owner`). **Khóa theo plot** (`grabbing[plot]`) chống hai người lấy cùng lúc; kiểm tra hàng còn ngay lúc lấy.
+- **Báo động:** lần thử khóa đầu tiên thông báo chủ nhà kèm tên kẻ cướp. Lấy được món đầu tiên thì chủ nhà có **khiên 10 phút** (chặn những lần thử khóa MỚI, người đã mở khóa vẫn lấy tiếp trong lượt đó). Người đang hướng dẫn (`Tutorial < 99`) không bị cướp.
+- **Đồng hồ sân:** mỗi 0.5 giây server đếm ngược 60 giây cho người đứng trong sân người khác (`SafeZone.PlotAt`), ra ngoài thì hồi 1 giây mỗi 2 giây; client hiện nhãn đỏ/cam "X's yard: leave in Ns!". **Hết giờ tạm xử như bị bắt** (mất túi, về nhà): chờ ngỗng nhà thật ở bước 7.
+- **Trả đồ:** `Bag.Clear` (bị bắt / chết / hết giờ) và `Bag.RemovePlayer` (thoát game) trả món cướp về kho chủ nhà (rương / trứng; rương lấy từ máy câu thành rương trong Stash) và báo chủ nhà. Cất ở Stash nhà mình thì thành của mình (`Bag.Deposit` giờ cất cả trứng).
+- **UI:** bảng "🔑 Break-in" (danh sách món + nút Take, cập nhật sau mỗi lần lấy qua Effect `RobUpdate`), nhãn đồng hồ sân.
+
+**File:** `Robbery.lua` (mới), `Bag.lua`, `Plots.lua`, `SafeZone.lua` (`PlotAt`), `Main.server.lua`, `MainUI.client.lua`, `Effects.client.lua`. Docs: `PROJECT_OVERVIEW.md`, `ECONOMY_DESIGN.md`, `TASKS.md`.
+
+**Đã kiểm tra:** `selene .` 0 lỗi. Studio chỉ có 1 người chơi nên test bằng bản `Robbery` **vá tạm trong Studio** (bỏ chặn tự cướp, đã khôi phục bản thật): mở khóa tiêu đúng 1 chìa; lấy rương Rainbow / trứng Reed / rương máy câu đúng (kho chủ trừ đúng, túi tăng); món lạ báo "gone"; mục tiêu chưa mở bị từ chối; khiên chặn thử khóa mới; `Bag.Clear` trả đủ 3 món về kho; đồng hồ sân đếm ngược trên client, hết giờ thì mất túi và đồ trả về. **Chưa test:** 2 người thật (việc 6.11 nhờ anh), chủ thoát game giữa vụ, hình bảng Break-in.
+
+**Lưu ý / quyết định:**
+- Cướp từ máy câu **không trừ độ bền** máy (có lợi cho chủ nhà), kho máy chỉ giảm số rương.
+- Phím cướp là **F** để khỏi trùng [E] của chủ nhà.
+- Cướp được cả trứng ở kho (`profile.Eggs`); trứng đang trong máy ấp không bị cướp.
+- Chưa có khóa cửa để mua (7.4): `LockLevel` luôn 0 nên tỉ lệ mở 50%.
+
+---
+
+## #40 · 15/10/2026 · Cướp nhà, phần 1: Config.Robbery, chìa, vùng an toàn theo người (6.1 đến 6.3)
+**Yêu cầu:** làm tiếp bước 6 (cướp nhà) theo `TASKS.md`.
+
+**Đã làm:**
+- **`Config.Robbery`:** `KeyPrice` 200, `MaxTries` 4, `TrespassTime` 60, `GrabTime` 3, `ShieldTime` 600, `Locks` (4 cấp: 50 / 40 / 30 / 20% mở, giá 0 / 3000 / 10000 / 30000) và `Config.LockInfo(level)`. Profile thêm `Keys`, `LockLevel`, `ShieldUntil` (`reconcile` tự bổ sung cho người cũ). Chưa có code dùng `Locks` / `MaxTries` / `ShieldTime` (làm ở 6.4 trở đi, 7.4).
+- **Mua chìa:** `Shop.BuyKey(số lượng)` (Action `BuyKey`, 1 đến 20 chiếc, số không hợp lệ thì mua 1). Tool Shop có mục "Robbery" với nút x1 / x5; đầu bảng Bag hiện số chìa.
+- **Vùng an toàn theo từng người (`SafeZone.lua`):** `SafeZone.Contains(position, player)`: hộp quanh nhà chỉ an toàn cho **chủ nhà** (attribute `OwnerId` của plot), nhà người khác và nhà chưa có chủ **không** an toàn; vùng chung (Spawn / Plaza) an toàn cho mọi người. Gọi không truyền player thì chỉ tính vùng chung. Sửa 4 chỗ gọi: `Guard.targetRoot`, `Fishing.spotFor`, `Bag` (chết có mất túi không); `SafeZone.IsSafe(player)` (Guard, Pets) tự dùng player.
+
+**File:** `Config.lua`, `Data.lua`, `Shop.lua`, `Main.server.lua`, `SafeZone.lua`, `Guard.lua`, `Fishing.lua`, `Bag.lua`, `MainUI.client.lua`.
+
+**Đã kiểm tra:** `selene .` 0 lỗi. Play: nhà mình an toàn, nhà người khác / giữa hồ không, Spawn có; đứng trong nhà người khác thì `IsSafe` = false; mua 5 chìa tốn 1000 coins; Action `BuyKey` từ client chạy. **Chưa Play thử** việc ngỗng thật sự đuổi người đứng trong sân nhà người khác, và chưa xem hình hàng "Robbery" trong Shop.
+
+**Lưu ý:** ngỗng hồ tuần quanh hồ nên chưa tự vào sân người khác để đuổi; đó là việc của ngỗng nhà (bước 7). Đồng bộ Studio bằng HTTP như #39.
+
+---
+
+## #39 · 15/10/2026 · Kho nhà giữ rương chưa mở + mở rương (bước 5 kinh tế)
+**Yêu cầu:** "code các module chơi, đề xuất bước đầu". Chọn bước 5 trong `ECONOMY_DESIGN.md` mục 11 (kho nhà + mở rương) vì cướp nhà (bước 6) cần có kho rương để cướp. Kèm `TASKS.md` (danh sách việc, tick sau mỗi việc).
+
+**Đã làm:**
+- **Cất Stash không còn tự mở rương.** Túi tạm chỉ giữ tên rương (`{ Chest = tên }`), nội dung coins / trứng **tung lúc mở** (`Fishing.lua` bỏ `RollReward` ở hồ cấm). `Bag.Deposit` chuyển rương vào `profile.Chests = { [tên rương] = số lượng }` (kho không giới hạn ô), lưu xong mới tính, lưu lỗi thì hoàn lại, trả về true / false.
+- **`Stash.lua` (module mới):** `OnPrompt` (nút [E] ở Stash: túi có đồ thì cất, rồi mở bảng Stash), `OpenChest(name, all)`, `OpenAll()`. Server kiểm tra tên rương (`Config.FindChest`), số lượng, và người chơi đứng trong `Config.Stash.OpenRange` (40 stud) quanh Stash của mình. Mở dùng `Fishing.GiveChest` nên cùng luật trứng như cũ.
+- **Action mới:** `OpenChest(tên, all)`, `OpenAllChests`. `Plots.StashPosition(player)`; nút [E] Stash đổi chữ thành "Open".
+- **Data:** `profile.Chests` có trong `defaultProfile`, `reconcile` bổ sung cho người cũ.
+- **UI:** bảng "📦 Stash" (rương hiếm trước, nút Open / Open all, disable Open all khi chỉ có 1); Bag có dòng "N chest(s) waiting in your Stash". Hiệu ứng `Deposit` hiện "N chests stashed" (không còn "+0 coins"), mở rương dùng hiệu ứng `Collect`. Chữ Tutorial bước 3 nhắc mở rương.
+- **Giữ nguyên:** rương từ ao nhà và máy câu vẫn mở ngay vào tài khoản (còn trong mục "chưa chốt" `SYSTEM_DESIGN.md` mục 12).
+
+**File:** `Config.lua`, `Data.lua`, `Bag.lua`, `Fishing.lua`, `Stash.lua` (mới), `Plots.lua`, `HouseBuilder.lua`, `Main.server.lua`, `MainUI.client.lua`, `Effects.client.lua`. Docs: `PROJECT_OVERVIEW.md`, `SYSTEM_DESIGN.md`, `ECONOMY_DESIGN.md`, `TASKS.md`.
+
+**Đã kiểm tra:** `selene .` 0 lỗi. Play trong Studio: cất 3 rương vào kho đúng số lượng; mở khi ở xa Stash bị chặn; tên rương sai, rương không có, kho trống đều báo lỗi đúng; Open một, Open all, OpenAllChests chạy đúng và cộng coins (393 coins từ 3 rương); bảng Stash trên client hiện đúng và cập nhật sau mỗi lần mở (gọi Action từ client).
+**Chưa kiểm tra:** bấm chuột thật vào nút / [E] (chỉ gọi hàm và Action), chưa câu thật ngoài hồ rồi cất, chưa kiểm tra hình hiệu ứng.
+
+**Đồng bộ Studio:** Rojo không nối và **Studio đang chứa bản script cũ hơn repo khá nhiều** (ví dụ `Data.lua` chưa có pet dạng bản ghi), nên đã chép toàn bộ 18 script khác nhau từ repo vào Studio. Cách làm: bật tạm `HttpService.HttpEnabled`, chạy `python -m http.server` trong repo, `execute_luau` tải từng file bằng `GetAsync`; xong đã tắt lại HttpEnabled và dừng server.
+
+**Chưa xong / lưu ý:**
+- Mở rương tức thì, chưa có animation `Open` của model rương và chưa có thời gian chờ (`ECONOMY_DESIGN.md` mục 12.4).
+- Người chơi đã lưu: rương đã cất trước bản này đã được cộng thẳng coins / trứng, không có rương trong kho (chuyển đổi không cần).
+- Bước tiếp theo: bước 6 cướp nhà (xem `TASKS.md`).
+
+---
+
 ## #38 · 15/10/2026 · Thanh progress bar cho HP và độ bền
 **Yêu cầu:** độ bền, HP thì làm thanh progress bar (thay cho chữ).
 

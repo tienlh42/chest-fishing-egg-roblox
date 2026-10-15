@@ -61,7 +61,7 @@ function AutoFishers.Collect(player, slot)
 	end
 	Remote.Notify(player, msg)
 	if broken then
-		Remote.Notify(player, ("Your %s Auto-Fisher is worn out and fell apart! Buy a new one at the Tool Shop."):format(tier.Name))
+		Remote.Notify(player, ("Your %s Auto-Fisher is worn out and fell apart! Buy a new one at its pedestal."):format(tier.Name))
 	elseif before > warnAt and entry.Durability <= warnAt then
 		Remote.Notify(player, ("Your %s Auto-Fisher is almost worn out! (%d left)"):format(tier.Name, entry.Durability))
 	end
@@ -74,6 +74,9 @@ end
 
 -- Mở ổ máy tiếp theo (mở một lần, không hỏng)
 function AutoFishers.UnlockSlot(player)
+	if not Plots.IsHome(player) then
+		return false, "Go to your house to unlock a pedestal."
+	end
 	local profile = Data.Get(player)
 	local nextSlot = profile.FisherSlots + 1
 	local price = Config.AutoFisher.PedestalPrices[nextSlot]
@@ -89,18 +92,25 @@ function AutoFishers.UnlockSlot(player)
 	return true, "New machine pedestal unlocked at your plot!"
 end
 
--- Mua thẳng máy tier `tierIndex`, lắp vào ô trống đầu tiên đã mở
-function AutoFishers.Buy(player, tierIndex)
+-- Mua thẳng máy tier `tierIndex`, lắp vào ổ `wantedSlot` (đang trống, đã mở) hoặc ô trống đầu tiên. Phải đứng ở nhà mình
+function AutoFishers.Buy(player, tierIndex, wantedSlot)
+	if not Plots.IsHome(player) then
+		return false, "Go to your house to buy a machine."
+	end
 	local profile = Data.Get(player)
 	local tier = typeof(tierIndex) == "number" and Config.AutoFisher.Tiers[tierIndex]
 	if not tier then
 		return false, "Unknown machine."
 	end
 	local slot = nil
-	for i = 1, profile.FisherSlots do
-		if not profile.AutoFishers[tostring(i)] then
-			slot = i
-			break
+	if typeof(wantedSlot) == "number" and wantedSlot % 1 == 0 and wantedSlot >= 1 and wantedSlot <= profile.FisherSlots and not profile.AutoFishers[tostring(wantedSlot)] then
+		slot = wantedSlot
+	else
+		for i = 1, profile.FisherSlots do
+			if not profile.AutoFishers[tostring(i)] then
+				slot = i
+				break
+			end
 		end
 	end
 	if not slot then
@@ -117,6 +127,9 @@ end
 
 -- Nâng máy ở ổ `slot` lên tier kế tiếp: trả chênh lệch giá, độ bền về đầy (cách duy nhất để "sửa" máy)
 function AutoFishers.Upgrade(player, slot)
+	if not Plots.IsHome(player) then
+		return false, "Go to your house to upgrade a machine."
+	end
 	local profile = Data.Get(player)
 	local entry = typeof(slot) == "number" and profile.AutoFishers[tostring(slot)]
 	if not entry then

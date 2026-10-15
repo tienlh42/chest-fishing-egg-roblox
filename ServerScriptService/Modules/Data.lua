@@ -2,7 +2,7 @@
 -- Giữ dữ liệu của từng người chơi (profile), lưu/tải bằng DataStore, gửi bản sao xuống client.
 --
 -- Profile:
---   Coins, Eggs = { Common = 2 }, Pets = { { Id = 1, Name = "Baker Dog", Durability = 2600 } }, EquippedPet = 1, NextPetId = 2,
+--   Coins, Eggs = { Reed = 2 }, Chests = { ["Wooden Chest"] = 3 } (rương chưa mở trong Stash), Pets = { { Id = 1, Name = "Baker Dog", Durability = 2600 } }, EquippedPet = 1, NextPetId = 2,
 --   Rods = { Basic = true, Catfish = 37 } (số = độ bền còn lại, Config.Rods[].Durability), EquippedRod = "Basic",
 --   IncubatorSlots = 1, Incubators = { ["1"] = { Tier = "Common", Start = os.time() } },
 --   FisherSlots = 1 (số ổ máy câu đã mở), AutoFishers = { ["1"] = { Tier = 1, Durability = 120, Last = os.time(), Stored = 0 } } (chỉ ổ có máy)
@@ -28,6 +28,7 @@ local function defaultProfile()
 	local profile = {
 		Coins = 0,
 		Eggs = {},
+		Chests = {}, -- kho rương chưa mở trong Stash: [tên rương Config.Chests[].Name] = số lượng (mở ở Stash.lua)
 		Pets = {}, -- danh sách bản ghi { Id, Name, Durability }, tạo bằng Data.NewPet
 		NextPetId = 1, -- Id của pet kế tiếp (chỉ tăng, không dùng lại)
 		-- EquippedPet: Id pet đang đi theo (không có = không pet)
@@ -38,12 +39,18 @@ local function defaultProfile()
 		FisherSlots = 1, -- số ổ máy câu đã mở (Config.AutoFisher.PedestalPrices, ổ 1 miễn phí)
 		AutoFishers = {}, -- [ổ] = { Tier, Durability, Last, Stored }, chỉ ổ đang có máy
 		BagLevel = 0, -- số lần đã nâng cấp túi (Config.Bag.Upgrades, mua ở Tool Shop)
+		Keys = 0, -- số Chìa vạn năng (Config.Robbery), mua ở Tool Shop
+		LockLevel = 0, -- cấp khóa cửa nhà (Config.Robbery.Locks), giảm tỉ lệ mở của chìa
+		ShieldUntil = 0, -- os.time() đến khi hết khiên chống cướp (sau khi bị cướp)
 		LastDaily = 0, -- ngày (os.time // 86400) đã nhận quà hằng ngày gần nhất
 		Gear = {}, -- trang bị đã mua: { RocketSandals = true } (Config.Gear)
 		-- Tutorial, StarterGiven: đặt trong Data.Load (người cũ / người mới xử lý khác nhau)
 	}
 	for tier in pairs(Config.Eggs) do
 		profile.Eggs[tier] = 0
+	end
+	for _, chest in ipairs(Config.Chests) do
+		profile.Chests[chest.Name] = 0
 	end
 	return profile
 end
@@ -57,6 +64,9 @@ local function reconcile(profile)
 	end
 	for tier in pairs(Config.Eggs) do
 		profile.Eggs[tier] = profile.Eggs[tier] or 0
+	end
+	for _, chest in ipairs(Config.Chests) do
+		profile.Chests[chest.Name] = profile.Chests[chest.Name] or 0
 	end
 	-- Pet lưu từ trước là tên (chuỗi): đổi thành bản ghi đầy bền. Trước đây pet MỚI NHẤT đi theo nên cho nó đi theo tiếp
 	local convertedPet = false

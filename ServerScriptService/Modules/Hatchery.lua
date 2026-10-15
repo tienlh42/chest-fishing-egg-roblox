@@ -10,6 +10,8 @@ local Tutorial = require(script.Parent.Tutorial)
 
 local Hatchery = {}
 
+local animating = {} -- [player] = { [slot] = true } bệ đang chạy hoạt ảnh nở (chặn bấm lại / ấp mới trong lúc đó)
+
 -- Người chơi bấm [E] ở máy ấp số `slot`
 function Hatchery.OnPrompt(player, slot)
 	local profile = Data.Get(player)
@@ -18,6 +20,9 @@ function Hatchery.OnPrompt(player, slot)
 	end
 	local key = tostring(slot)
 	local entry = profile.Incubators[key]
+	if animating[player] and animating[player][slot] then
+		return -- đang nở
+	end
 
 	-- Máy trống -> mở bảng chọn trứng
 	if not entry then
@@ -32,20 +37,48 @@ function Hatchery.OnPrompt(player, slot)
 		return
 	end
 
-	-- Nở xong -> nhận pet
+	-- Nở xong -> nhận pet NGAY (dữ liệu chốt luôn), còn hoạt ảnh nở / vỡ vòm chạy ở client (IncubatorAnimator) trong HatchAnim.Duration giây
 	profile.Incubators[key] = nil
 	local petName = egg and Config.WeightedRoll(egg.Pets).Name
 	if petName then
 		Data.NewPet(profile, petName)
 	end
 	Data.Update(player)
-	Plots.Refresh(player)
 
-	if petName then
-		Remote.Effect(player, "Hatched", { Pet = petName, Position = Plots.SlotPosition(player, "IncubatorSlot" .. slot) })
-		Remote.Notify(player, ("You hatched a %s!"):format(petName))
-		Tutorial.Complete(player, "Hatch")
+	local anim = Config.Incubators.HatchAnim
+	local model, eggModel = Plots.IncubatorParts(player, slot)
+	if not model then
+		Plots.Refresh(player)
+	else
+		animating[player] = animating[player] or {}
+		animating[player][slot] = true
+		model:SetAttribute("State", "Hatching")
+		Remote.EffectAll("IncubatorHatch", { Model = model, Egg = eggModel, Tier = entry.Tier, Pet = petName, BurstAt = anim.BurstAt, Duration = anim.Duration })
 	end
+
+	-- Pet bật ra đúng lúc vòm kính vỡ
+	task.delay(model and anim.BurstAt or 0, function()
+		if petName and player.Parent then
+			Remote.Effect(player, "Hatched", { Pet = petName, Position = Plots.SlotPosition(player, "IncubatorSlot" .. slot) })
+			Remote.Notify(player, ("You hatched a %s!"):format(petName))
+			Tutorial.Complete(player, "Hatch")
+		end
+	end)
+	-- Hết hoạt ảnh: dựng lại máy (trống, vòm mới)
+	if model then
+		task.delay(anim.Duration, function()
+			if animating[player] then
+				animating[player][slot] = nil
+			end
+			if player.Parent then
+				Plots.Refresh(player)
+			end
+		end)
+	end
+end
+
+function Hatchery.RemovePlayer(player)
+	animating[player] = nil
 end
 
 -- Client chọn trứng trong bảng Hatch
@@ -59,7 +92,7 @@ function Hatchery.StartHatch(player, slot, tier)
 		return false, "Invalid egg."
 	end
 	local key = tostring(slot)
-	if profile.Incubators[key] then
+	if profile.Incubators[key] or (animating[player] and animating[player][slot]) then
 		return false, "This incubator is busy."
 	end
 	if (profile.Eggs[tier] or 0) < 1 then

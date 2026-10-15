@@ -62,10 +62,10 @@ function Config.TopChestPercent(odds)
 	return top / total * 100
 end
 
--- Tung trứng của 1 rương. Trả về tier (khoá trong Config.Eggs) hoặc nil (không có trứng)
-function Config.RollChestEgg(chest)
+-- Tung trứng của 1 rương (chanceMult: perk EggChanceMult của cần). Trả về tier (khoá trong Config.Eggs) hoặc nil (không có trứng)
+function Config.RollChestEgg(chest, chanceMult)
 	for _, egg in ipairs(chest.Eggs or {}) do
-		if math.random() < egg.Chance then
+		if math.random() < egg.Chance * (chanceMult or 1) then
 			return egg.Tier
 		end
 	end
@@ -127,6 +127,44 @@ Config.Bag = {
 	},
 }
 
+-- Stash (kho nhà): rương cất vào đây KHÔNG tự mở. Kho không giới hạn ô. Nội dung rương (coins / trứng) tung LÚC MỞ.
+-- Mở rương phải đứng gần Stash của mình (OpenRange stud) nên không mang rương đi mở ở chỗ khác.
+Config.Stash = {
+	OpenRange = 40,
+}
+
+-- Cướp nhà (ECONOMY_DESIGN mục 7). Cướp cần Chìa vạn năng (mua ở Tool Shop, cất trong profile.Keys, KHÔNG chiếm ô túi).
+-- Mỗi lần thử mở một mục tiêu (Stash hoặc một máy câu) tiêu 1 chìa dù mở được hay không; tỉ lệ mở giảm theo cấp khóa cửa của chủ nhà.
+Config.Robbery = {
+	KeyPrice = 200,
+	MaxTries = 4, -- số lần thử chìa tối đa của 1 kẻ cướp trong 1 nhà mỗi lượt vào sân
+	TrespassTime = 60, -- giây được ở trong sân người khác trước khi ngỗng nhà rượt
+	GrabTime = 3, -- giữ [E] bấy nhiêu giây để lấy 1 món
+	ShieldTime = 600, -- giây không bị cướp tiếp sau khi vừa bị cướp
+	-- Khóa cửa của chủ nhà (profile.LockLevel = 0..3, phần tử thứ level + 1; dùng Config.LockInfo): tỉ lệ mở của chìa theo cấp, giá mua cấp đó
+	Locks = {
+		{ Name = "No lock", OpenChance = 0.50, Price = 0 },
+		{ Name = "Lock I", OpenChance = 0.40, Price = 3000 },
+		{ Name = "Lock II", OpenChance = 0.30, Price = 10000 },
+		{ Name = "Lock III", OpenChance = 0.20, Price = 30000 },
+	},
+}
+
+-- Thông tin khóa cửa cấp `level` (0 = không khóa), nil nếu không có cấp đó
+function Config.LockInfo(level)
+	return Config.Robbery.Locks[level + 1]
+end
+
+-- Tìm rương theo tên hiện cho người chơi (chuỗi do client gửi lên phải khớp đúng). Trả về cấu hình rương và thứ hạng (1 = thường)
+function Config.FindChest(name)
+	for rank, chest in ipairs(Config.Chests) do
+		if chest.Name == name then
+			return chest, rank
+		end
+	end
+	return nil
+end
+
 -- Pet bảo vệ: chặn ngỗng, mất HP, kiệt sức (0 HP) thì rút về. Hồi HP khi chủ đứng trong vùng an toàn.
 Config.Pet = {
 	MaxHP = 100, -- HP mặc định nếu pet không có trong Stats
@@ -138,11 +176,11 @@ Config.Pet = {
 	-- Chỉ số riêng từng pet: HP càng cao càng chặn ngỗng được lâu (ngỗng đánh Guard.PetDamage HP/giây)
 	-- Model = tên asset trong CustomModels (Assets/Models); animation đổi bằng attribute "Anim" (Pets.lua)
 	Stats = {
-		["Baker Dog"] = { Model = "Pet_DogBaker", HP = 130 }, -- ~26s
-		["Muscle Duck"] = { Model = "Pet_DuckMuscle", HP = 220 }, -- ~44s, chịu đòn lâu nhất
-		["Magician Cat"] = { Model = "Pet_CatMagician", HP = 170 }, -- ~34s
-		["K9 Dog"] = { Model = "Pet_DogK9", HP = 240 }, -- ~48s
-		["Office Dragon"] = { Model = "Pet_DragonOffice", HP = 300 }, -- ~60s
+		["Baker Dog"] = { Model = "Pet_DogBaker", HP = 130, Perk = { Name = "Crumbs", Info = "Goose stalls more often", StunEvery = 4 } }, -- ~26s
+		["Muscle Duck"] = { Model = "Pet_DuckMuscle", HP = 220, Perk = { Name = "Tank", Info = "Takes 20% less damage", DamageTaken = 0.8 } }, -- ~44s, chịu đòn lâu nhất
+		["Magician Cat"] = { Model = "Pet_CatMagician", HP = 170, Perk = { Name = "Hat Trick", Info = "Goose stays stunned longer", StunTime = 2.2 } }, -- ~34s
+		["K9 Dog"] = { Model = "Pet_DogK9", HP = 240, Perk = { Name = "Sniff", Info = "Goose stalls more often", StunEvery = 4 } }, -- ~48s
+		["Office Dragon"] = { Model = "Pet_DragonOffice", HP = 300, Perk = { Name = "Smoke", Info = "Geese give up twice as fast", LoseTimeMult = 0.5 } }, -- ~60s
 	},
 }
 
@@ -190,6 +228,12 @@ Config.Guard = {
 	ReturnGrace = 6, -- ngỗng quay lại được thêm bấy nhiêu giây "coi như còn thấy" để kịp chạy tới (khỏi bỏ cuộc vì khuất tầm nhìn)
 	StunEvery = 5, -- cứ mỗi bấy nhiêu giây pet làm ngỗng khựng lại 1 lần
 	StunTime = 1.2,
+	-- Ngỗng NHÀ (mỗi plot có chủ có 1 con): đi vòng tròn bán kính Radius quanh tâm plot, bỏ qua chủ nhà.
+	-- Chỉ rượt người "bị truy nã" trong sân nhà đó (đã thử khóa / hết giờ trong sân). Không bám quá Leash stud tính từ tâm plot.
+	House = { Radius = 36, Points = 12, PatrolSpeed = 10, Leash = 60 },
+	-- Ngỗng ĐỒN CẢNH SÁT: sinh khi có người bị báo động cướp nhà (tối đa MaxPerHeist con đuổi cùng 1 kẻ cướp), xuất phát từ điểm hồi sinh,
+	-- hết giờ Lifetime hoặc mất dấu thì biến mất.
+	Police = { MaxPerHeist = 3, Lifetime = 45 },
 	Patrol = { -- chạy dọc giữa lối gạch quanh hồ (tâm hồ = gốc toạ độ, cách mép nước 4.2 stud), xem ParkBuilder.lua
 		Vector3.new(-25, 0, -49.2),
 		Vector3.new(25, 0, -49.2),
@@ -204,6 +248,16 @@ Config.Guard = {
 		Vector3.new(-69.2, 0, -15),
 		Vector3.new(-61.5, 0, -41.5),
 	},
+}
+
+-- Sông vòng quanh 8 nhà (ParkBuilder.BuildRiver, hoạt ảnh lá / vịt trôi: River.client.lua). Elip tâm gốc toạ độ, đường giữa dòng.
+-- Rx / Rz = bán kính nhà (228 / 212, xem MapBuilder) + 55: mép nước trong cách mép sau plot khoảng 2 stud. Width = bề rộng dòng nước.
+Config.River = {
+	Rx = 283,
+	Rz = 267,
+	Width = 16,
+	Segments = 96, -- số đoạn Terrain dựng vòng sông (nhiều hơn = tròn hơn, dựng lâu hơn)
+	FlowSpeed = 6, -- stud / giây lá và vịt trôi theo dòng (chỉ là hiệu ứng)
 }
 
 -- Animation nhân vật (dạng "rbxassetid://123456"). Để "" = chỉ dùng hoạt ảnh tạm.
@@ -222,11 +276,11 @@ Config.Animations = {
 -- Color/Length chỉ dùng cho model tạm khi thiếu asset.
 Config.Rods = {
 	{ Id = "Basic", Name = "Duckling Rod", Model = "Rod_Starter", Price = 0, Odds = { 88, 10, 1.8, 0.2, 0.02 }, Speed = 1, Color = Color3.fromRGB(230, 200, 110), Length = 7 },
-	{ Id = "Catfish", Name = "Catfish Rod", Model = "Rod_Catfish", Price = 150, Odds = { 78, 18, 3.4, 0.55, 0.05 }, Speed = 0.92, Durability = 50, Color = Color3.fromRGB(110, 130, 150), Length = 7 },
-	{ Id = "Turtle", Name = "Turtle Rod", Model = "Rod_Turtle", Price = 500, Odds = { 66, 25, 7, 1.7, 0.3 }, Speed = 0.8, Durability = 100, Color = Color3.fromRGB(60, 120, 200), Length = 8 },
-	{ Id = "Fox", Name = "Fox Rod", Model = "Rod_Fox", Price = 1800, Odds = { 52, 30, 13, 4.2, 0.8 }, Speed = 0.7, Durability = 250, Color = Color3.fromRGB(150, 100, 220), Length = 8 },
-	{ Id = "Cat", Name = "Lucky Cat Rod", Model = "Rod_Cat", Price = 6000, Odds = { 40, 31, 19, 8.2, 1.8 }, Speed = 0.58, Durability = 500, Color = Color3.fromRGB(255, 190, 40), Length = 9 },
-	{ Id = "Dragon", Name = "Rainbow Dragon Rod", Model = "Rod_Dragon", Price = 18000, Odds = { 26, 28, 28, 14, 4 }, Speed = 0.45, Durability = 1000, Color = Color3.fromRGB(240, 240, 250), Length = 10 },
+	{ Id = "Catfish", Name = "Catfish Rod", Model = "Rod_Catfish", Price = 150, Odds = { 78, 18, 3.4, 0.55, 0.05 }, Speed = 0.92, Durability = 50, Perk = { Name = "Quiet Reel", Info = "Noise starts 2s later", NoiseDelay = 2 }, Color = Color3.fromRGB(110, 130, 150), Length = 7 },
+	{ Id = "Turtle", Name = "Turtle Rod", Model = "Rod_Turtle", Price = 500, Odds = { 66, 25, 7, 1.7, 0.3 }, Speed = 0.8, Durability = 100, Perk = { Name = "Steady Line", Info = "Line holds longer when paused", Leash = 6, PauseTimeout = 20 }, Color = Color3.fromRGB(60, 120, 200), Length = 8 },
+	{ Id = "Fox", Name = "Fox Rod", Model = "Rod_Fox", Price = 1800, Odds = { 52, 30, 13, 4.2, 0.8 }, Speed = 0.7, Durability = 250, Perk = { Name = "Sly Fox", Info = "Geese see you from 25% less far", SightMult = 0.75 }, Color = Color3.fromRGB(150, 100, 220), Length = 8 },
+	{ Id = "Cat", Name = "Lucky Cat Rod", Model = "Rod_Cat", Price = 6000, Odds = { 40, 31, 19, 8.2, 1.8 }, Speed = 0.58, Durability = 500, Perk = { Name = "Lucky Paw", Info = "+20% coins from chests", CoinMult = 1.2 }, Color = Color3.fromRGB(255, 190, 40), Length = 9 },
+	{ Id = "Dragon", Name = "Rainbow Dragon Rod", Model = "Rod_Dragon", Price = 18000, Odds = { 26, 28, 28, 14, 4 }, Speed = 0.45, Durability = 1000, Perk = { Name = "Hoard", Info = "+10% egg chance from chests", EggChanceMult = 1.1 }, Color = Color3.fromRGB(240, 240, 250), Length = 10 },
 }
 
 -- Báo "sắp hỏng" (cần câu, pet) khi độ bền còn bằng bấy nhiêu phần của độ bền tối đa
@@ -263,6 +317,8 @@ Config.Incubators = {
 	StartSlots = 1,
 	MaxSlots = 4,
 	Prices = { [2] = 300, [3] = 1500, [4] = 6000 }, -- giá mở máy thứ 2, 3, 4
+	-- Hoạt ảnh nở (IncubatorAnimator.client.lua): tổng Duration giây; BurstAt giây thứ mấy vòm kính vỡ và pet bật ra
+	HatchAnim = { Duration = 5, BurstAt = 2.4 },
 }
 
 -- ===== MARKET =====

@@ -385,7 +385,7 @@ local function onCollect(data)
 	anchor.Position = data.Position
 	anchor.Parent = fxFolder
 
-	local text = ("+%d coins"):format(data.Coins)
+	local text = data.Chests and ("%d chest%s stashed"):format(data.Chests, data.Chests == 1 and "" or "s") or ("+%d coins"):format(data.Coins)
 	for tier, count in pairs(data.Eggs or {}) do
 		text ..= ("\n+%d %s Egg"):format(count, tier)
 	end
@@ -405,7 +405,7 @@ local handlers = {
 	PetDown = onPetDown,
 	Hatched = onHatched,
 	Collect = onCollect,
-	Deposit = onCollect, -- cất đồ vào Stash: cùng dạng dữ liệu với thu rương máy câu (Coins, Eggs, Position)
+	Deposit = onCollect, -- cất rương vào Stash (Chests, Position); Collect = mở rương / thu máy câu (Coins, Eggs, Position)
 }
 
 remotes:WaitForChild("Effect").OnClientEvent:Connect(function(kind, data)
@@ -456,6 +456,10 @@ local function filterPrompt(prompt)
 		local ownerId = prompt:GetAttribute("OwnerId")
 		if ownerId then
 			prompt.Enabled = ownerId == player.UserId
+		end
+		local robOwnerId = prompt:GetAttribute("RobOwnerId")
+		if robOwnerId then
+			prompt.Enabled = robOwnerId ~= player.UserId -- nút cướp: chỉ người KHÁC chủ nhà thấy
 		end
 	end
 end
