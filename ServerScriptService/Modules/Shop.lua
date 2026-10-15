@@ -1,13 +1,13 @@
 -- ModuleScript: ServerScriptService > Modules > Shop
--- Tool Shop: mua/chọn cần câu, mua máy câu tự động, mở thêm máy ấp, nâng cấp túi, trang bị (Dép Tên Lửa).
+-- Tool Shop: mua/chọn cần câu, chọn pet đi theo, mở thêm máy ấp, nâng cấp túi, trang bị (Dép Tên Lửa).
 
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Config = require(ReplicatedStorage.Config)
 local Bag = require(script.Parent.Bag)
 local Data = require(script.Parent.Data)
 local Fishing = require(script.Parent.Fishing)
+local Guard = require(script.Parent.Guard)
 local Plots = require(script.Parent.Plots)
-local AutoFishers = require(script.Parent.AutoFishers)
 local Remote = require(script.Parent.Remote)
 
 local Shop = {}
@@ -33,7 +33,7 @@ function Shop.BuyRod(player, id)
 	if not Data.Spend(player, rod.Price) then
 		return false, ("Not enough coins (need %d)."):format(rod.Price)
 	end
-	profile.Rods[rod.Id] = true
+	profile.Rods[rod.Id] = rod.Durability or true
 	profile.EquippedRod = rod.Id
 	Data.Update(player)
 	Fishing.GiveRod(player)
@@ -52,8 +52,22 @@ function Shop.EquipRod(player, id)
 	return true, ("Equipped %s."):format(rod.Name)
 end
 
-function Shop.BuyAutoFisher(player)
-	return AutoFishers.Buy(player)
+-- Chọn pet đi theo (pet nào cũng được, kể cả pet đang kiệt sức). Không đổi pet giữa lúc bị ngỗng đuổi
+function Shop.EquipPet(player, id)
+	local profile = Data.Get(player)
+	local pet = typeof(id) == "number" and Data.FindPet(profile, id)
+	if not pet then
+		return false, "You don't own this pet."
+	end
+	if profile.EquippedPet == id then
+		return false, ("%s is already following you."):format(pet.Name)
+	end
+	if Guard.IsChasing(player) then
+		return false, "You can't swap pets while the goose is chasing you!"
+	end
+	profile.EquippedPet = id
+	Data.Update(player)
+	return true, ("%s is now following you."):format(pet.Name)
 end
 
 function Shop.BuyIncubator(player)

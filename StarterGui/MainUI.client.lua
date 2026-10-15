@@ -53,6 +53,33 @@ local function corner(inst, radius)
 	make("UICorner", { CornerRadius = UDim.new(0, radius or 8) }, inst)
 end
 
+-- Thanh tiến độ cho HP và độ bền: nền tối + phần đầy. Trả về (nền, phần đầy). label = chữ trong thanh (bỏ trống nếu thanh quá nhỏ)
+local function progressBar(parent, size, position, ratio, color, label)
+	local back = make("Frame", { Size = size, Position = position, BackgroundColor3 = COLORS.Outline, BorderSizePixel = 0 }, parent)
+	corner(back, 6)
+	local fill = make("Frame", { Size = UDim2.fromScale(math.clamp(ratio, 0, 1), 1), BackgroundColor3 = color, BorderSizePixel = 0 }, back)
+	corner(fill, 6)
+	if label then
+		local text = make("TextLabel", {
+			Size = UDim2.fromScale(1, 1),
+			BackgroundTransparency = 1,
+			TextScaled = true,
+			Font = Enum.Font.GothamBold,
+			TextColor3 = Color3.new(1, 1, 1),
+			TextStrokeTransparency = 0.4,
+			Text = label,
+			ZIndex = 2,
+		}, back)
+		make("UITextSizeConstraint", { MaxTextSize = 11 }, text)
+	end
+	return back, fill
+end
+
+-- Màu thanh HP: xanh lá, đỏ khi gần cạn (màu thanh độ bền: Config.DurabilityColor)
+local function hpColor(ratio)
+	return ratio <= Config.Pet.WarnRatio and COLORS.Red or COLORS.Green
+end
+
 -- Viền tối + bóng sáng phía trên: dùng cho mọi nút / thẻ để cùng một phong cách
 local function candy(inst, color)
 	inst.BackgroundColor3 = color
@@ -382,6 +409,8 @@ local petText = make("TextLabel", {
 	TextColor3 = Color3.new(1, 1, 1),
 	TextStrokeTransparency = 0.5,
 }, petFrame)
+-- Thanh độ bền của pet đang đi theo, mỏng, ngay dưới thanh HP
+local _, petDurabilityFill = progressBar(petFrame, UDim2.new(1, -40, 0, 8), UDim2.new(0, 20, 1, 4), 1, COLORS.Blue)
 
 local bagLabel = pill(2, COLORS.Blue, "🎒")
 
@@ -428,6 +457,7 @@ make("UIPadding", { PaddingTop = UDim.new(0, 6), PaddingBottom = UDim.new(0, 6) 
 
 local reel = nil -- { Start, Duration, Base, Paused, PausedAt, Timeout } khi đang có lượt câu
 local petState = nil -- bản mới nhất của Pets.Status
+local petHPs = {} -- [Id pet] = HP cuối cùng thấy được. Pet không equip thì HP không đổi nên con số này vẫn đúng; chưa thấy lần nào = đầy máu
 local bagCount = 0
 local stashPart = nil
 
@@ -487,6 +517,15 @@ local function refreshPet()
 		petText.Text = ("[!] %s  %d/%d"):format(name, math.ceil(petState.HP), petState.Max)
 	else
 		petText.Text = ("%s  %d/%d"):format(name, math.ceil(petState.HP), petState.Max)
+	end
+
+	for _, pet in ipairs(profile and profile.Pets or {}) do
+		if pet.Id == petState.Id then
+			local ratio = pet.Durability / Config.PetDurability(pet.Name)
+			petDurabilityFill.Size = UDim2.fromScale(math.clamp(ratio, 0, 1), 1)
+			petDurabilityFill.BackgroundColor3 = Config.DurabilityColor(ratio)
+			break
+		end
 	end
 end
 
@@ -638,7 +677,8 @@ local function header(text)
 end
 
 -- buttons: { { Text, Color, OnClick, Disabled } }
-local function addRow(text, buttons)
+-- bar (tùy chọn): { Ratio, Color, Label } = thanh HP / độ bền dưới chữ của hàng
+local function addRow(text, buttons, bar)
 	rowCount += 1
 	local row = make("Frame", {
 		Size = UDim2.new(1, -8, 0, 64),
@@ -647,8 +687,12 @@ local function addRow(text, buttons)
 	}, list)
 	corner(row, 14)
 	local width = 100
+	local textWidth = -(#buttons * (width + 6)) - 18
+	if bar then
+		progressBar(row, UDim2.new(1, textWidth, 0, 13), UDim2.fromOffset(10, 47), bar.Ratio, bar.Color, bar.Label)
+	end
 	make("TextLabel", {
-		Size = UDim2.new(1, -(#buttons * (width + 6)) - 18, 1, -8),
+		Size = UDim2.new(1, textWidth, 1, bar and -26 or -8),
 		Position = UDim2.fromOffset(10, 4),
 		BackgroundTransparency = 1,
 		RichText = true,
@@ -667,19 +711,17 @@ local function addRow(text, buttons)
 	end
 end
 
-local function countPets()
-	local counts, names = {}, {}
-	for _, name in ipairs(profile.Pets) do
-		if not counts[name] then
-			counts[name] = 0
-			table.insert(names, name)
+-- Pet đang có (bản ghi { Id, Name, Durability }), hiếm nhất (giá bán gốc cao nhất) trước
+local function sortedPets()
+	local pets = table.clone(profile.Pets)
+	table.sort(pets, function(a, b)
+		local priceA, priceB = Config.SellPrices.Pets[a.Name] or 0, Config.SellPrices.Pets[b.Name] or 0
+		if priceA ~= priceB then
+			return priceA > priceB
 		end
-		counts[name] += 1
-	end
-	table.sort(names, function(a, b)
-		return (Config.SellPrices.Pets[a] or 0) > (Config.SellPrices.Pets[b] or 0)
+		return a.Id < b.Id
 	end)
-	return counts, names
+	return pets
 end
 
 local function closePanel()
@@ -775,7 +817,7 @@ local function addGrid()
 	return grid
 end
 
--- spec: { Model | Emoji, Name, Sub, Count, Rank (1..6 màu viền), Dim (chưa có), Tag ("EQUIPPED"...) }
+-- spec: { Model | Emoji, Name, Sub, Bars ({ { Ratio, Color } }, thay cho Sub), Count, Rank (1..6 màu viền), Dim (chưa có), Tag ("EQUIPPED"...), OnClick (bấm vào ô) }
 local function addCell(grid, spec)
 	local cell = make("Frame", { BackgroundColor3 = COLORS.Row, BackgroundTransparency = spec.Dim and 0.45 or 0 }, grid)
 	corner(cell, 14)
@@ -803,7 +845,12 @@ local function addCell(grid, spec)
 		Text = spec.Name,
 	}, cell)
 	make("UITextSizeConstraint", { MaxTextSize = 14 }, nameLabel)
-	if spec.Sub then
+	if spec.Bars then
+		-- thanh HP / độ bền thay cho dòng chữ phụ: mỗi thanh cao 8, xếp từ trên xuống
+		for i, bar in ipairs(spec.Bars) do
+			progressBar(cell, UDim2.new(1, -16, 0, 8), UDim2.fromOffset(8, 95 + (i - 1) * 11), bar.Ratio, bar.Color)
+		end
+	elseif spec.Sub then
 		local subLabel = make("TextLabel", {
 			Size = UDim2.new(1, -8, 0, 16),
 			Position = UDim2.fromOffset(4, 94),
@@ -845,15 +892,40 @@ local function addCell(grid, spec)
 		corner(tag, 9)
 		make("UIStroke", { Color = COLORS.Outline, Thickness = 2 }, tag)
 	end
+	if spec.OnClick then
+		local hit = make("TextButton", { Size = UDim2.fromScale(1, 1), BackgroundTransparency = 1, Text = "", ZIndex = 5 }, cell)
+		hit.Activated:Connect(spec.OnClick)
+	end
 end
 
 -- ===== Nội dung từng bảng =====
 local renderers = {}
 
+-- Rương hiếm nhất mà bảng tỉ lệ ra rương này có thể ra (vd. "Purple")
+local function topChestName(odds)
+	for i = #odds, 1, -1 do
+		if odds[i] > 0 then
+			return (Config.Chests[i].Name:gsub(" Chest", ""))
+		end
+	end
+end
+
 renderers.Shop = function()
 	header("Fishing Rods")
 	for _, rod in ipairs(Config.Rods) do
-		local text = ("<b>%s</b>\nLuck x%.1f   Speed x%.1f"):format(rod.Name, rod.Luck, 1 / rod.Speed)
+		-- Cần đang có thì hiện thanh độ bền; chưa mua thì ghi dùng được bao nhiêu rương
+		local left = profile.Rods[rod.Id]
+		local note = ""
+		if not rod.Durability then
+			note = "  (never breaks)"
+		elseif not left then
+			note = ("  (lasts %d chests)"):format(rod.Durability)
+		end
+		local text = ("<b>%s</b>%s\nPurple+ chests %.1f%%   Speed x%.1f"):format(rod.Name, note, Config.TopChestPercent(rod.Odds), 1 / rod.Speed)
+		local bar = nil
+		if rod.Durability and left then
+			bar = { Ratio = left / rod.Durability, Color = Config.DurabilityColor(left / rod.Durability), Label = ("%d/%d"):format(left, rod.Durability) }
+		end
 		local spec
 		if profile.EquippedRod == rod.Id then
 			spec = { Text = "Equipped", Disabled = true }
@@ -866,23 +938,17 @@ renderers.Shop = function()
 				request("BuyRod", rod.Id)
 			end }
 		end
-		addRow(text, { spec })
+		addRow(text, { spec }, bar)
 	end
 
 	header("Plot Upgrades")
 	local fisherCfg = Config.AutoFisher
-	local owned, nextPrice = 0, nil
-	for i, price in ipairs(fisherCfg.Prices) do
-		if profile.AutoFishers[tostring(i)] then
-			owned += 1
-		elseif not nextPrice then
-			nextPrice = price
-		end
-	end
+	local pedestals = profile.FisherSlots
+	local nextPedestal = fisherCfg.PedestalPrices[pedestals + 1]
 	addRow(
-		("<b>Auto-Fisher</b> (%d/%d)\n1 chest every %ds, holds %d"):format(owned, #fisherCfg.Prices, fisherCfg.Interval, fisherCfg.Capacity),
-		{ nextPrice and { Text = commas(nextPrice), Color = COLORS.Green, OnClick = function()
-			request("BuyAutoFisher")
+		("<b>Machine Pedestal</b> (%d/%d)\nA place for one Auto-Fisher"):format(pedestals, #fisherCfg.PedestalPrices),
+		{ nextPedestal and { Text = commas(nextPedestal), Color = COLORS.Green, OnClick = function()
+			request("BuyFisherSlot")
 		end } or { Text = "Max", Disabled = true } }
 	)
 
@@ -906,6 +972,32 @@ renderers.Shop = function()
 		end } or { Text = "Max", Disabled = true } }
 	)
 
+	-- Máy câu: mua thẳng tier tùy chọn vào ổ trống (máy hỏng thì mua lại), rồi nâng tier tại chỗ
+	header("Auto-Fishers (wear out, buy again)")
+	for tierIndex, tier in ipairs(fisherCfg.Tiers) do
+		addRow(
+			("<b>%s Auto-Fisher</b>  (up to %s)\n%ds / chest, holds %d, lasts %d chests"):format(tier.Name, topChestName(tier.Odds), tier.Interval, tier.Capacity, tier.Durability),
+			{ { Text = commas(tier.Price), Color = COLORS.Green, OnClick = function()
+				request("BuyAutoFisher", tierIndex)
+			end } }
+		)
+	end
+	for slot = 1, pedestals do
+		local entry = profile.AutoFishers[tostring(slot)]
+		if entry then
+			local tier = fisherCfg.Tiers[entry.Tier]
+			local nextTier = fisherCfg.Tiers[entry.Tier + 1]
+			local ratio = entry.Durability / tier.Durability
+			addRow(
+				("<b>Machine #%d: %s</b>\n%s"):format(slot, tier.Name, nextTier and ("Upgrade to %s restores durability"):format(nextTier.Name) or "Best machine"),
+				{ nextTier and { Text = commas(nextTier.Price - tier.Price), Color = COLORS.Green, OnClick = function()
+					request("UpgradeAutoFisher", slot)
+				end } or { Text = "Max", Disabled = true } },
+				{ Ratio = ratio, Color = Config.DurabilityColor(ratio), Label = ("%d/%d"):format(entry.Durability, tier.Durability) }
+			)
+		end
+	end
+
 	-- Trang bị (Config.Gear)
 	header("Gear")
 	for id, gear in pairs(Config.Gear) do
@@ -924,7 +1016,7 @@ renderers.Market = function()
 	local any = false
 	for _, tier in ipairs(sortedTiers()) do
 		local count = profile.Eggs[tier] or 0
-		if count > 0 and Config.SellPrices.Eggs[tier] then -- trứng không có giá (Starter) thì không bán
+		if count > 0 and Config.SellPrices.Eggs[tier] then -- trứng không có giá thì không bán
 			any = true
 			addRow(("<b>%s Egg</b> x%d\n%s coins each"):format(tier, count, commas(Config.SellPrices.Eggs[tier])), {
 				{ Text = "Sell All", Color = COLORS.Red, OnClick = function()
@@ -940,19 +1032,19 @@ renderers.Market = function()
 		addRow("No eggs to sell.", {})
 	end
 
-	header("Pets")
-	local counts, names = countPets()
-	for _, name in ipairs(names) do
-		addRow(("<b>%s</b> x%d (%d HP)\n%s coins each"):format(name, counts[name], Config.PetMaxHP(name), commas(Config.SellPrices.Pets[name] or 0)), {
-			{ Text = "Sell All", Color = COLORS.Red, OnClick = function()
-				request("SellPet", name, true)
+	header("Pets (worn pets sell for less)")
+	local pets = sortedPets()
+	for _, pet in ipairs(pets) do
+		local following = profile.EquippedPet == pet.Id and "  [following you]" or ""
+		local maxDurability = Config.PetDurability(pet.Name)
+		local ratio = pet.Durability / maxDurability
+		addRow(("<b>%s</b>%s\n%d max HP"):format(pet.Name, following, Config.PetMaxHP(pet.Name)), {
+			{ Text = "Sell " .. commas(Config.PetSellPrice(pet)), Color = COLORS.Green, OnClick = function()
+				request("SellPet", pet.Id)
 			end },
-			{ Text = "Sell 1", Color = COLORS.Green, OnClick = function()
-				request("SellPet", name, false)
-			end },
-		})
+		}, { Ratio = ratio, Color = Config.DurabilityColor(ratio), Label = ("%d/%d"):format(math.ceil(pet.Durability), maxDurability) })
 	end
-	if #names == 0 then
+	if #pets == 0 then
 		addRow("No pets to sell.", {})
 	end
 end
@@ -1011,14 +1103,28 @@ renderers.Bag = function()
 		})
 	end
 
-	-- Pet: đủ mọi loại, loại chưa có hiện bóng đen
-	header("🐾 Pets")
+	-- Pet: mỗi con 1 ô với 2 thanh (HP xanh lá, độ bền xanh dương), bấm để cho đi theo; loại chưa có hiện bóng đen
+	header("🐾 Pets (tap to equip)")
+	addRow("Green bar: HP (refills at home)\nBlue bar: durability (never refills)", {})
 	local pets = addGrid()
-	local counts, names = countPets()
 	local seen = {}
-	for _, name in ipairs(names) do
-		seen[name] = true
-		addCell(pets, { Model = name, Name = name, Sub = ("%d HP"):format(Config.PetMaxHP(name)), Count = counts[name], Rank = petRank(name) })
+	for _, pet in ipairs(sortedPets()) do
+		seen[pet.Name] = true
+		local hpRatio = (petHPs[pet.Id] or Config.PetMaxHP(pet.Name)) / Config.PetMaxHP(pet.Name)
+		local durabilityRatio = pet.Durability / Config.PetDurability(pet.Name)
+		addCell(pets, {
+			Model = pet.Name,
+			Name = pet.Name,
+			Bars = {
+				{ Ratio = hpRatio, Color = hpColor(hpRatio) },
+				{ Ratio = durabilityRatio, Color = Config.DurabilityColor(durabilityRatio) },
+			},
+			Rank = petRank(pet.Name),
+			Tag = profile.EquippedPet == pet.Id and "EQUIPPED" or nil,
+			OnClick = function()
+				request("EquipPet", pet.Id)
+			end,
+		})
 	end
 	for _, tier in ipairs(Config.EggOrder) do
 		for _, pet in ipairs(Config.Eggs[tier].Pets) do
@@ -1037,10 +1143,14 @@ renderers.Bag = function()
 		addCell(rods, {
 			Model = rod.Name,
 			Name = rod.Name,
-			Sub = owned and ("Luck x%.1f"):format(rod.Luck) or "in Tool Shop",
+			Sub = owned and not rod.Durability and "never breaks" or not owned and "in Tool Shop" or nil,
+			Bars = owned and rod.Durability and { { Ratio = owned / rod.Durability, Color = Config.DurabilityColor(owned / rod.Durability) } } or nil,
 			Rank = rank,
 			Dim = not owned,
 			Tag = profile.EquippedRod == rod.Id and "EQUIPPED" or nil,
+			OnClick = owned and function()
+				request("EquipRod", rod.Id)
+			end or nil,
 		})
 	end
 
@@ -1177,7 +1287,7 @@ end)
 
 -- ===== Hướng dẫn người mới (profile.Tutorial: 1..3 đang làm, 99 = xong; xem Tutorial.lua) =====
 local TUTORIAL_STEPS = {
-	"Hatch your free Starter Egg: go to the Hatchery behind your house and press E on the incubator.",
+	"Hatch your free Reed Egg: go to the Hatchery behind your house and press E on the incubator.",
 	"Go to the lake. Stand on the path facing a bubbling CHEST spot and HOLD the big FISH button. If the goose honks, let go!",
 	"Run your loot home and press E at your Stash (front yard) to keep it.",
 }
@@ -1237,6 +1347,7 @@ local function onSync(data)
 	lastCoins = profile.Coins
 	coinsLabel.Text = spaced(profile.Coins)
 	refreshTutorial()
+	refreshPet() -- độ bền pet đổi theo profile
 	if current then
 		render()
 	end
@@ -1257,6 +1368,9 @@ remotes.Effect.OnClientEvent:Connect(function(kind, data)
 		endReel(true)
 	elseif kind == "PetHP" then
 		petState = data
+		if data.Id then
+			petHPs[data.Id] = data.HP
+		end
 		refreshPet()
 	elseif kind == "Bag" then
 		refreshBag(data)

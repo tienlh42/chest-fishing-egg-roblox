@@ -2,10 +2,10 @@
 -- Giữ dữ liệu của từng người chơi (profile), lưu/tải bằng DataStore, gửi bản sao xuống client.
 --
 -- Profile:
---   Coins, Eggs = { Common = 2 }, Pets = { "Cat", "Dog" },
---   Rods = { Basic = true }, EquippedRod = "Basic",
+--   Coins, Eggs = { Common = 2 }, Pets = { { Id = 1, Name = "Baker Dog", Durability = 2600 } }, EquippedPet = 1, NextPetId = 2,
+--   Rods = { Basic = true, Catfish = 37 } (số = độ bền còn lại, Config.Rods[].Durability), EquippedRod = "Basic",
 --   IncubatorSlots = 1, Incubators = { ["1"] = { Tier = "Common", Start = os.time() } },
---   AutoFishers = { ["1"] = { Last = os.time(), Stored = 0 } }
+--   FisherSlots = 1 (số ổ máy câu đã mở), AutoFishers = { ["1"] = { Tier = 1, Durability = 120, Last = os.time(), Stored = 0 } } (chỉ ổ có máy)
 
 local DataStoreService = game:GetService("DataStoreService")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
@@ -28,12 +28,15 @@ local function defaultProfile()
 	local profile = {
 		Coins = 0,
 		Eggs = {},
-		Pets = {},
+		Pets = {}, -- danh sách bản ghi { Id, Name, Durability }, tạo bằng Data.NewPet
+		NextPetId = 1, -- Id của pet kế tiếp (chỉ tăng, không dùng lại)
+		-- EquippedPet: Id pet đang đi theo (không có = không pet)
 		Rods = { [Config.Rods[1].Id] = true },
 		EquippedRod = Config.Rods[1].Id,
 		IncubatorSlots = Config.Incubators.StartSlots,
 		Incubators = {},
-		AutoFishers = {},
+		FisherSlots = 1, -- số ổ máy câu đã mở (Config.AutoFisher.PedestalPrices, ổ 1 miễn phí)
+		AutoFishers = {}, -- [ổ] = { Tier, Durability, Last, Stored }, chỉ ổ đang có máy
 		BagLevel = 0, -- số lần đã nâng cấp túi (Config.Bag.Upgrades, mua ở Tool Shop)
 		LastDaily = 0, -- ngày (os.time // 86400) đã nhận quà hằng ngày gần nhất
 		Gear = {}, -- trang bị đã mua: { RocketSandals = true } (Config.Gear)
@@ -54,6 +57,33 @@ local function reconcile(profile)
 	end
 	for tier in pairs(Config.Eggs) do
 		profile.Eggs[tier] = profile.Eggs[tier] or 0
+	end
+	-- Pet lưu từ trước là tên (chuỗi): đổi thành bản ghi đầy bền. Trước đây pet MỚI NHẤT đi theo nên cho nó đi theo tiếp
+	local convertedPet = false
+	for i, pet in ipairs(profile.Pets) do
+		if typeof(pet) == "string" then
+			profile.Pets[i] = { Id = profile.NextPetId, Name = pet, Durability = Config.PetDurability(pet) }
+			profile.NextPetId += 1
+			convertedPet = true
+		end
+	end
+	if convertedPet then
+		profile.EquippedPet = profile.Pets[#profile.Pets].Id
+	end
+	-- Máy câu lưu từ trước khi có tier riêng: máy ở ổ i là tier i, đầy bền; mở sẵn các ổ đã có máy
+	for key, entry in pairs(profile.AutoFishers) do
+		if entry.Tier == nil then
+			local index = tonumber(key)
+			entry.Tier = index
+			entry.Durability = Config.AutoFisher.Tiers[index].Durability
+			profile.FisherSlots = math.max(profile.FisherSlots, index)
+		end
+	end
+	-- Cần lưu từ trước khi có độ bền là `true`: coi như còn đầy bền
+	for _, rod in ipairs(Config.Rods) do
+		if rod.Durability and profile.Rods[rod.Id] == true then
+			profile.Rods[rod.Id] = rod.Durability
+		end
 	end
 	return profile
 end
@@ -92,7 +122,7 @@ function Data.Load(player)
 	profiles[player] = reconcile(typeof(saved) == "table" and saved or defaultProfile())
 	canSave[player] = ok
 
-	-- Người mới: tặng 1 Starter Egg (nở ra Cat) + bật hướng dẫn. Người cũ đã có pet thì bỏ qua hướng dẫn.
+	-- Người mới: tặng 1 Reed Egg (nở ra Baker Dog) + bật hướng dẫn. Người cũ đã có pet thì bỏ qua hướng dẫn.
 	local profile = profiles[player]
 	if profile.Tutorial == nil then
 		profile.Tutorial = #profile.Pets > 0 and 99 or 1 -- bước hướng dẫn đang làm (Tutorial.lua), 99 = xong
@@ -100,7 +130,7 @@ function Data.Load(player)
 	if not profile.StarterGiven then
 		profile.StarterGiven = true
 		if #profile.Pets == 0 then
-			profile.Eggs.Starter = (profile.Eggs.Starter or 0) + 1
+			profile.Eggs.Reed = (profile.Eggs.Reed or 0) + 1
 		end
 	end
 
@@ -122,6 +152,27 @@ function Data.Load(player)
 
 	Data.Update(player)
 	return profiles[player]
+end
+
+-- Thêm 1 pet mới (đầy bền) vào profile (chưa gọi Data.Update). Chưa có pet nào đang đi theo thì cho nó đi theo luôn
+function Data.NewPet(profile, name)
+	local pet = { Id = profile.NextPetId, Name = name, Durability = Config.PetDurability(name) }
+	profile.NextPetId += 1
+	table.insert(profile.Pets, pet)
+	if profile.EquippedPet == nil then
+		profile.EquippedPet = pet.Id
+	end
+	return pet
+end
+
+-- Tìm pet theo Id. Trả về bản ghi và vị trí trong danh sách (nil nếu không có)
+function Data.FindPet(profile, id)
+	for i, pet in ipairs(profile.Pets) do
+		if pet.Id == id then
+			return pet, i
+		end
+	end
+	return nil
 end
 
 function Data.Get(player)

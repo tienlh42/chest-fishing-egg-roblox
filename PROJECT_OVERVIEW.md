@@ -51,7 +51,7 @@ ServerScriptService/
     HouseBuilder.lua    1 plot = nhà gỗ (vào được) + Stash + ổ pet + kệ trưng bày + hàng rào + chuồng ấp + ao
     BuildUtil.lua       Hàm dựng Part dùng chung (block, wedge, tree, bench, lamp...)
     Plots.lua           Cấp plot, dựng máy ấp/máy câu theo dữ liệu, nút [E], dịch chuyển về nhà
-    Tutorial.lua        Hướng dẫn người mới 3 bước (profile.Tutorial), Starter Egg tặng trong Data.Load
+    Tutorial.lua        Hướng dẫn người mới 3 bước (profile.Tutorial), Reed Egg tặng trong Data.Load
     House.lua           Đồ chức năng trong nhà: ổ pet (hồi nhanh), kệ trưng bày pet, quà hằng ngày (đang tắt)
     Teleports.lua       Dịch chuyển bằng nút (đều tốn tiền): Lake 20, Tool Shop 10, My Plot 10 (chặn khi có đồ / bị đuổi)
     SafeZone.lua        Vùng an toàn (hộp quanh từng nhà + quanh Spawn)
@@ -79,7 +79,7 @@ Assets/Models/*.rbxmx       29 model asset (cần, pet, trứng, rương, máy c
 | Remote | Hướng | Dùng cho |
 |---|---|---|
 | `Cast` (RemoteEvent) | client → server | `"Down"` = nhấn giữ câu / kéo tiếp, `"Up"` = nhả (tạm dừng) |
-| `Action` (RemoteFunction) | client → server, trả `(ok, message)` | `GetData`, `BuyRod`, `EquipRod`, `BuyAutoFisher`, `BuyIncubator`, `StartHatch`, `SellEgg`, `SellPet`, `BuyBagUpgrade`, `BuyGear`, `Teleport("Lake" | "Shop" | "Plot")` |
+| `Action` (RemoteFunction) | client → server, trả `(ok, message)` | `GetData`, `BuyRod`, `EquipRod`, `EquipPet(id)`, `BuyAutoFisher`, `BuyIncubator`, `StartHatch`, `SellEgg`, `SellPet(id)`, `BuyBagUpgrade`, `BuyGear`, `Teleport("Lake" | "Shop" | "Plot")` |
 | `Sync` (RemoteEvent) | server → client | Gửi nguyên profile sau mỗi `Data.Update` |
 | `Notify` (RemoteEvent) | server → client | Dòng thông báo (toast 3 giây) |
 | `Effect` (RemoteEvent) | server → client | `CastStart`, `CastPause`, `CastResume`, `CastFail`, `Catch`, `Bag`, `Deposit`, `Alert` (ngỗng nghi ngờ/đuổi), `PetHP`, `PetDown`, `Hatched`, `Collect`, `OpenPanel` (client phát âm thanh theo các sự kiện này) |
@@ -90,7 +90,8 @@ Assets/Models/*.rbxmx       29 model asset (cần, pet, trứng, rương, máy c
 
 **Câu (`Fishing.lua`, `Config.Fishing`)**
 - Server tính điểm rơi phao 15 stud trước mặt, **phải trúng nước** mới được câu.
-- Phao rơi vào hồ cấm (`Lake`) thì rương vào túi tạm. Rơi vào ao nhà (`Pond`) thì vào thẳng tài khoản (chậm hơn, ít đồ hiếm hơn).
+- **Độ bền cần:** mỗi rương kéo lên ở **hồ cấm** làm cần đang cầm mất 1 độ bền (`Config.Rods[].Durability`, lưu `profile.Rods[id]` = số còn lại). Hết bền thì cần **biến mất**, tự cầm lại Duckling (không bao giờ hỏng); không sửa được, mua lại giá gốc. Ao và lượt hụt không hao. Báo "sắp hỏng" khi còn 20%.
+- Phao rơi vào hồ cấm (`Lake`) thì rương vào túi tạm. Rơi vào ao nhà (`Pond`) thì vào thẳng tài khoản (**chỉ ra rương Wooden**, kéo chậm gấp 5: `Config.Fishing.PondOdds`, `PondTimeMult`).
 - **Giữ nút:** kéo, nhân vật đứng im, sau 3 giây kéo thì bắt đầu gây tiếng động gọi ngỗng (bán kính 45).
 - **Nhả nút: tạm dừng**, giữ tiến độ, đi lại được, không gây tiếng động. Hụt khi đi xa quá 12 stud, dừng quá 40 giây, pet gục, cất cần, bị bắt.
 
@@ -100,7 +101,9 @@ Assets/Models/*.rbxmx       29 model asset (cần, pet, trứng, rương, máy c
 
 **Rương & trứng (`Config.Chests`, `Config.Eggs`, `Config.RollChestEgg`):** 5 loại rương (asset `TreasureChest_*`), mỗi rương ra tối đa 1 trứng, rương càng hiếm càng dễ ra trứng xịn. Mỗi trứng nở đúng 1 pet.
 
-| Rương (Weight) | Không trứng | Trứng có thể ra (xác suất) |
+**Loại rương nào ra:** không còn Luck / Weight. Mỗi cần câu có bảng `Odds` (5 số ứng với 5 rương theo thứ tự trong `Config.Chests`, ví dụ Duckling `{ 88, 10, 1.8, 0.2, 0.02 }`), tung bằng `Config.RollChest(odds)`. Ao dùng `Config.Fishing.PondOdds`, máy câu dùng `Odds` của từng tier (`Config.AutoFisher.Tiers`, tối đa rương Purple).
+
+| Rương | Không trứng | Trứng có thể ra (xác suất) |
 |---|---|---|
 | Wooden (60) | 70% | Reed 30% |
 | Blue (25) | 40% | Reed 48%, Bubble 12% |
@@ -110,7 +113,6 @@ Assets/Models/*.rbxmx       29 model asset (cần, pet, trứng, rương, máy c
 
 | Trứng (ấp) | Pet | HP | Giá bán trứng / pet |
 |---|---|---|---|
-| Starter (5s, không bán) | Chef Cat | 100 | - / 15 |
 | Reed (10s) | Baker Dog | 130 | 10 / 25 |
 | Bubble (20s) | Muscle Duck | 220 | 40 / 80 |
 | Crystal (40s) | Magician Cat | 170 | 120 / 250 |
@@ -127,17 +129,21 @@ Assets/Models/*.rbxmx       29 model asset (cần, pet, trứng, rương, máy c
 
 **Túi & Stash (`Bag.lua`):** 4 món (nâng lên 5, rồi 6 ở **Tool Shop**: 300 / 1200 coins), không lưu DataStore. Cất ở Stash (ngoài sân trước, cạnh lối đá gần cổng) thì cộng vào profile và **lưu**. Lưu lỗi thì hoàn lại, đồ vẫn trong túi. Túi có đồ thì không được dịch chuyển về nhà.
 
-**Pet (`Pets.lua`, `Config.Pet.Stats`):** mỗi loại pet có HP riêng (bảng trên). Pet mới nhất đi theo người; animation đổi theo việc đang làm (Idle / Walk / Run, Attack khi chặn ngỗng, Happy khi vừa hiện). HP chỉ tồn tại trong phiên chơi, hồi đầy sau 40 giây khi đứng ở nhà, nhanh gấp 2.5 lần khi đứng cạnh **ổ pet**.
+**Pet (`Pets.lua`, `Config.Pet.Stats`):** mỗi loại pet có HP riêng (bảng trên). Mỗi pet là **bản ghi riêng** `profile.Pets = { { Id, Name, Durability } }` (tạo bằng `Data.NewPet`), pet đi theo là `profile.EquippedPet` (Id); chọn pet trong **Bag** (bấm ô pet, Action `EquipPet`, không đổi được khi đang bị ngỗng đuổi). Nở pet đầu tiên khi chưa equip gì thì tự equip. Animation đổi theo việc đang làm (Idle / Walk / Run, Attack khi chặn ngỗng, Happy khi vừa hiện). HP chỉ tồn tại trong phiên chơi (mỗi pet giữ HP riêng), hồi đầy sau 40 giây khi đứng ở nhà, nhanh gấp 2.5 lần khi đứng cạnh **ổ pet**; chỉ pet đang equip mới hồi.
+
+**Độ bền pet (`Config.Pet.DurabilityMult`):** độ bền tối đa = HP x 20 (`Config.PetDurability`). Mỗi 1 HP ngỗng đánh mất, pet mất 1 độ bền; hồi HP không hồi độ bền. Hết bền thì pet **biến mất**, không có pet đi theo (equip pet khác trong Bag); không sửa được. Bán pet (Market, `SellPet(id)`) được giá gốc x tỉ lệ độ bền còn lại (`Config.PetSellPrice`). Pet cũ lưu dạng tên được đổi thành bản ghi đầy bền trong `Data.lua` (`reconcile`), pet mới nhất của người cũ được equip.
 
 **Nhà (`House.lua`, `Config.House`):** ổ pet (hồi nhanh), kệ trưng bày các loại pet đã có. Hộp thư quà hằng ngày (100 coins + 1 Reed Egg) **đang tắt**: `Daily.Enabled = false`, sẽ bật lại sau.
 
-**Người mới:** được 1 Starter Egg (nở ra Chef Cat) và khung hướng dẫn 3 bước: ấp trứng → câu ở hồ → cất Stash (`Tutorial.lua`).
+**Người mới:** chỉ có cần Duckling, 1 Reed Egg tặng (nở ra Baker Dog) và khung hướng dẫn 3 bước: ấp trứng → câu ở hồ → cất Stash (`Tutorial.lua`).
 
-**Bag (bảng UI):** lưới 4 cột chia mục Eggs / Pets / Rods / Gear, mỗi ô có hình model 3D (ViewportFrame); món chưa có hiện bóng đen. Chạy trong Studio (`Config.Dev.Enabled`) thì nhà chưa có chủ được bày đầy đồ (5 máy câu đầy kho, 4 máy ấp có trứng xịn) để test cướp nhà; cơ chế cướp chưa code.
+**Bag (bảng UI):** lưới 4 cột chia mục Eggs / Pets / Rods / Gear, mỗi ô có hình model 3D (ViewportFrame); món chưa có hiện bóng đen. **Thanh HP / độ bền** (`progressBar` trong `MainUI.client.lua`): ô pet có 2 thanh (xanh lá = HP, xanh dương = độ bền), ô cần có thanh độ bền, bấm ô pet / cần để equip. Shop (cần, máy), Market (pet) hiện thanh độ bền có số; HUD pet có thanh độ bền mỏng dưới thanh HP; bảng trên máy câu ngoài sân có thanh độ bền. Màu độ bền: xanh dương, cam dưới 50%, đỏ dưới 20% (`Config.DurabilityColor`). Chạy trong Studio (`Config.Dev.Enabled`) thì nhà chưa có chủ được bày đầy đồ (5 máy câu đầy kho, 4 máy ấp có trứng xịn) để test cướp nhà; cơ chế cướp chưa code.
 
 **Âm thanh (`Config.Sounds`, `Effects.client.lua`):** ngỗng Honk / còi, tõm khi hụt, nhận rương, tiếng xu, trứng nở, pet yếu.
 
-**Kinh tế:** 6 cần câu (asset `Rod_*`: Duckling 0, Catfish 150, Turtle 600, Fox 2500, Lucky Cat 8000, Rainbow Dragon 25000; Luck/Speed trong `Config.Rods`), **Dép Tên Lửa** (2000 coins, +10% tốc độ, `Config.Gear`), máy câu tự động (tối đa 5 máy, giá 500 / 1500 / 4000 / 10000 / 25000, máy thứ i dùng asset `AutoFisher_<Tier i>`; 30 giây ra 1 rương, chứa tối đa 20), máy ấp (tối đa 4), bán trứng và pet. **Dev mode:** chạy trong Studio có 1 tỷ coins (`Config.Dev`).
+**Máy câu tự động (`AutoFishers.lua`, `Config.AutoFisher`):** **ổ** và **máy** tách nhau. 5 ổ (`PedestalPrices` 0 / 400 / 1200 / 3000 / 7000, mở một lần, `profile.FisherSlots`). Máy là món tiêu hao: **mua thẳng tier** vào ổ trống (Common 300, Rare 1000, Epic 3500, Legendary 10000, Mythic 30000; asset `AutoFisher_<Tier>`). Mỗi tier có `Interval` (180 / 160 / 140 / 120 / 100 giây ra 1 rương), `Capacity` (kho 10 / 11 / 13 / 15 / 18, đầy sau ~30 phút, tích cả offline), `Durability` (số rương làm ra được: 120 / 200 / 450 / 1000 / 2500) và `Odds` (chỉ ra tới rương Purple). Dữ liệu: `profile.AutoFishers[ổ] = { Tier, Durability, Last, Stored }`. Bấm [E] ở máy để mở hết rương; độ bền trừ đúng số rương thu, hết thì máy biến mất (ổ còn lại), còn 20% thì báo. **Nâng tier tại chỗ** (Action `UpgradeAutoFisher`) = trả chênh lệch giá, giữ kho đã tích, độ bền về đầy (cách duy nhất để "sửa"). Máy sắp hỏng (độ bền < kho) chỉ tích tối đa bằng độ bền còn lại. Mua / mở ổ / nâng ở **Tool Shop** (Action `BuyFisherSlot`, `BuyAutoFisher(tierIndex)`, `UpgradeAutoFisher(slot)`).
+
+**Kinh tế:** 6 cần câu (asset `Rod_*`: Duckling 0, Catfish 150, Turtle 500, Fox 1800, Lucky Cat 6000, Rainbow Dragon 18000; `Odds` và `Speed` trong `Config.Rods`), **Dép Tên Lửa** (2000 coins, +10% tốc độ, `Config.Gear`), **máy câu tự động** (xem mục dưới: 5 ổ + 5 tier, mua thẳng tier, có độ bền), máy ấp (tối đa 4), bán trứng và pet. **Dev mode:** chạy trong Studio có 1 tỷ coins (`Config.Dev`).
 
 ---
 
@@ -167,6 +173,7 @@ Assets/Models/*.rbxmx       29 model asset (cần, pet, trứng, rương, máy c
 |---|---|
 | `DEVLOG.md` | **Nhật ký thay đổi** theo thời gian (mới nhất ở trên) |
 | `SYSTEM_DESIGN.md` | **Thiết kế đích:** độ hiếm 5 cấp, kho rương và mở rương ở nhà, ngỗng nhà + đồn cảnh sát, cướp nhà. Có nhãn phần nào đã code, phần nào mới chốt thiết kế |
+| `ECONOMY_DESIGN.md` | **Thiết kế kinh tế farm:** tiền từ câu hồ / ao / máy câu / cướp nhà, bảng tỉ lệ rương theo cần, máy câu 5 tier, **độ bền cần / máy / pet**, **Chìa vạn năng + khóa cửa**, perk cần và pet, giá, tiến độ. Số liệu chạy từ `tools/sim_economy.py`. **Chưa code**, Config hiện tại vẫn là số cũ |
 | `HUONG_DAN.md` | Hướng dẫn cho người mới: cài đặt, chạy thử, thay model |
 | `MAP_LEVEL1.md` | Bố cục map, quy ước tên Part, cách chuyển sang map thật |
 | `PARK_REDESIGN.md` | Thiết kế công viên + nhà gỗ, ghi chú Terrain, bảng cân bằng |

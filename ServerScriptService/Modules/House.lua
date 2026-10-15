@@ -44,7 +44,8 @@ end
 -- Các loại pet đã có (mỗi loại 1 lần), hiếm nhất (giá bán cao nhất) trước
 local function petKinds(profile)
 	local seen, kinds = {}, {}
-	for _, name in ipairs(profile.Pets) do
+	for _, pet in ipairs(profile.Pets) do
+		local name = pet.Name
 		if not seen[name] then
 			seen[name] = true
 			table.insert(kinds, name)

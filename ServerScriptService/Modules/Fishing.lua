@@ -158,6 +158,30 @@ local function fail(player, message)
 	end
 end
 
+-- Hao 1 độ bền của cần đang cầm sau mỗi rương kéo lên ở hồ. Hết bền thì cần biến mất, quay về cần đầu tiên (không bao giờ hỏng)
+local function wearRod(player)
+	local profile = Data.Get(player)
+	local rod = Config.GetRod(profile.EquippedRod)
+	if not rod.Durability then
+		return
+	end
+	local left = profile.Rods[rod.Id] - 1
+	if left > 0 then
+		profile.Rods[rod.Id] = left
+		if left == math.floor(rod.Durability * Config.DurabilityWarnRatio) then
+			Remote.Notify(player, ("Your %s is almost broken! (%d left)"):format(rod.Name, left))
+		end
+		Data.Update(player)
+		return
+	end
+	local fallback = Config.Rods[1]
+	profile.Rods[rod.Id] = nil
+	profile.EquippedRod = fallback.Id
+	Data.Update(player)
+	Fishing.GiveRod(player)
+	Remote.Notify(player, ("Your %s broke! You are back to the %s."):format(rod.Name, fallback.Name))
+end
+
 local function succeed(player, session)
 	sessions[player] = nil
 	unfreeze(player)
@@ -171,6 +195,7 @@ local function succeed(player, session)
 		Remote.Effect(player, "Catch", { Chest = chest.Name, Unsealed = true })
 		Remote.Notify(player, ("Hauled up a %s! Bag %d/%d. Carry it home to your Stash to open it."):format(chest.Name, Bag.Count(player), Bag.Capacity(player)))
 		Tutorial.Complete(player, "Lake")
+		wearRod(player)
 		return
 	end
 
@@ -317,8 +342,7 @@ function Fishing.Press(player)
 	end
 
 	local rod = Config.GetRod(profile.EquippedRod)
-	local luck = rod.Luck * (spot == "Lake" and Config.Fishing.LakeLuck or 1)
-	local chest = Config.WeightedRoll(Config.Chests, luck)
+	local chest = Config.RollChest(spot == "Lake" and rod.Odds or Config.Fishing.PondOdds)
 	local duration = chest.HoldTime * rod.Speed * (spot == "Pond" and Config.Fishing.PondTimeMult or 1)
 
 	sessions[player] = {

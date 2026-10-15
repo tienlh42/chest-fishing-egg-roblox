@@ -14,7 +14,7 @@ local Plots = {}
 local plotList = {} -- các Model plot theo thứ tự
 local ownerOf = {} -- [plot] = player
 local plotOf = {} -- [player] = plot
-local labels = {} -- [plot] = { Incubators = {[i] = TextLabel}, Fishers = {[i] = TextLabel}, Eggs = {[i] = Model}, Machines = {[i] = Model} }
+local labels = {} -- [plot] = { Incubators = {[i] = TextLabel}, Fishers = {[i] = TextLabel}, Eggs = {[i] = Model}, Machines = {[i] = Model}, Bars = {[i] = Frame phần đầy của thanh độ bền máy} }
 local MACHINE_SCALE = 0.7 -- máy câu asset cao ~6.6 stud, rộng 7.7: thu nhỏ cho 5 máy vừa hàng ở mép ao (xem HouseBuilder)
 local callbacks = {} -- OnIncubator(player, slot), OnFisher(player, slot)
 local map
@@ -49,6 +49,28 @@ local function makeLabel(part, height)
 	label.Parent = gui
 	gui.Parent = part
 	return label
+end
+
+-- Thanh độ bền dưới bảng chữ của máy câu: thu bảng chữ lại, thanh nằm ở đáy. Trả về phần đầy của thanh (đổi Size / màu khi cập nhật)
+local function addDurabilityBar(label)
+	label.Size = UDim2.fromScale(1, 0.72)
+	local back = Instance.new("Frame")
+	back.Size = UDim2.fromScale(0.8, 0.16)
+	back.Position = UDim2.fromScale(0.1, 0.78)
+	back.BackgroundColor3 = Color3.fromRGB(35, 28, 80)
+	back.BorderSizePixel = 0
+	back.Parent = label.Parent
+	local fill = Instance.new("Frame")
+	fill.Size = UDim2.fromScale(1, 1)
+	fill.BackgroundColor3 = Config.DurabilityColor(1)
+	fill.BorderSizePixel = 0
+	fill.Parent = back
+	for _, frame in ipairs({ back, fill }) do
+		local corner = Instance.new("UICorner")
+		corner.CornerRadius = UDim.new(0.5, 0)
+		corner.Parent = frame
+	end
+	return fill
 end
 
 -- Nút [E] chỉ chủ plot dùng được (client tự ẩn nút của plot người khác)
@@ -141,21 +163,24 @@ local function buildIncubators(plot, dynamic, profile, lab)
 end
 
 local function buildFishers(plot, dynamic, profile, lab)
-	for i = 1, #Config.AutoFisher.Prices do
+	for i = 1, #Config.AutoFisher.PedestalPrices do
 		local pad = find(plot, "FisherSlot" .. i)
 		if pad then
-			if profile.AutoFishers[tostring(i)] then
+			local entry = profile.AutoFishers[tostring(i)]
+			if entry then
 				clearLabel(pad) -- bệ đã có máy: bỏ chữ "Empty slot" cũ
-				local machine = Models.Anchor(Models.Get("AutoFisher_" .. (Config.AutoFisher.Tiers[i] or "Common")))
+				local tierName = Config.AutoFisher.Tiers[entry.Tier].Name
+				local machine = Models.Anchor(Models.Get("AutoFisher_" .. tierName))
 				machine:ScaleTo(MACHINE_SCALE)
 				Models.PlaceOnGround(machine, padTop(pad)) -- ô máy đã xoay sẵn trong HouseBuilder: mặt trước (-Z) ra mặt nước
 				machine:SetAttribute("Slots", 3) -- cả 3 cần đều mở
 				machine.Parent = dynamic
 				lab.Machines[i] = machine
-				makePrompt(machine.PrimaryPart, "Collect", "Auto-Fisher", plot, function(player)
+				makePrompt(machine.PrimaryPart, "Collect", tierName .. " Auto-Fisher", plot, function(player)
 					callbacks.OnFisher(player, i)
 				end)
 				lab.Fishers[i] = makeLabel(machine.PrimaryPart, 6)
+				lab.Bars[i] = addDurabilityBar(lab.Fishers[i])
 			else
 				lab.Fishers[i] = makeLabel(pad, 3)
 			end
@@ -176,22 +201,23 @@ local function dressDemo(plot)
 	end
 	local dynamic = Instance.new("Folder")
 	dynamic.Name = "Dynamic"
-	local profile = { IncubatorSlots = Config.Incubators.MaxSlots, Incubators = {}, AutoFishers = {} }
+	local profile = { IncubatorSlots = Config.Incubators.MaxSlots, Incubators = {}, FisherSlots = #Config.AutoFisher.PedestalPrices, AutoFishers = {} }
 	for i = 1, Config.Incubators.MaxSlots do
 		profile.Incubators[tostring(i)] = { Tier = DEMO_EGGS[(i - 1) % #DEMO_EGGS + 1], Start = os.time() - 100000 }
 	end
-	for i = 1, #Config.AutoFisher.Prices do
-		profile.AutoFishers[tostring(i)] = { Last = os.time(), Stored = Config.AutoFisher.Capacity }
+	for i, tier in ipairs(Config.AutoFisher.Tiers) do
+		profile.AutoFishers[tostring(i)] = { Tier = i, Durability = tier.Durability, Last = os.time(), Stored = tier.Capacity }
 	end
-	local lab = { Incubators = {}, Fishers = {}, Eggs = {}, Machines = {} }
+	local lab = { Incubators = {}, Fishers = {}, Eggs = {}, Machines = {}, Bars = {} }
 	buildIncubators(plot, dynamic, profile, lab)
 	buildFishers(plot, dynamic, profile, lab)
 	for i, label in pairs(lab.Incubators) do
 		label.Text = ("%s Egg\nReady!"):format(profile.Incubators[tostring(i)].Tier)
 		Models.SetAnim(lab.Eggs[i], "Hatch")
 	end
-	for _, label in pairs(lab.Fishers) do
-		label.Text = ("Auto-Fisher\n%d/%d chests"):format(Config.AutoFisher.Capacity, Config.AutoFisher.Capacity)
+	for i, label in pairs(lab.Fishers) do
+		local tier = Config.AutoFisher.Tiers[i]
+		label.Text = ("%s  %d/%d chests"):format(tier.Name, tier.Capacity, tier.Capacity)
 	end
 	for _, machine in pairs(lab.Machines) do
 		machine:SetAttribute("Fill", 3)
@@ -219,7 +245,7 @@ function Plots.Refresh(player)
 	dynamic = Instance.new("Folder")
 	dynamic.Name = "Dynamic"
 
-	local lab = { Incubators = {}, Fishers = {}, Eggs = {}, Machines = {} }
+	local lab = { Incubators = {}, Fishers = {}, Eggs = {}, Machines = {}, Bars = {} }
 	buildIncubators(plot, dynamic, profile, lab)
 	buildFishers(plot, dynamic, profile, lab)
 	labels[plot] = lab
@@ -273,15 +299,25 @@ function Plots.UpdateLabels(player)
 	for i, label in pairs(lab.Fishers) do
 		local entry = profile.AutoFishers[tostring(i)]
 		if entry then
+			local tier = Config.AutoFisher.Tiers[entry.Tier]
 			local stored = Config.AutoFisherStored(entry, now)
-			label.Text = ("Auto-Fisher\n%d/%d chests"):format(stored, Config.AutoFisher.Capacity)
+			local limit = math.min(tier.Capacity, entry.Durability) -- máy sắp hỏng chỉ còn làm ra được bấy nhiêu rương
+			label.Text = ("%s  %d/%d chests"):format(tier.Name, stored, tier.Capacity)
+			local bar = lab.Bars[i]
+			if bar then
+				local ratio = entry.Durability / tier.Durability
+				bar.Size = UDim2.fromScale(math.clamp(ratio, 0, 1), 1)
+				bar.BackgroundColor3 = Config.DurabilityColor(ratio)
+			end
 			local machine = lab.Machines[i]
 			if machine and not machine:GetAttribute("Collecting") then
-				machine:SetAttribute("Fill", math.min(3, math.ceil(stored / Config.AutoFisher.Capacity * 3)))
-				Models.SetAnim(machine, stored >= Config.AutoFisher.Capacity and "Full" or "Work")
+				machine:SetAttribute("Fill", math.min(3, math.ceil(stored / limit * 3)))
+				Models.SetAnim(machine, stored >= limit and "Full" or "Work")
 			end
+		elseif i <= profile.FisherSlots then
+			label.Text = "Empty pedestal\nBuy a machine at Tool Shop"
 		else
-			label.Text = "Empty slot\nBuy at Tool Shop"
+			label.Text = "Locked\nUnlock at Tool Shop"
 		end
 	end
 end

@@ -70,7 +70,10 @@ local actions = {
 	end,
 	BuyRod = Shop.BuyRod,
 	EquipRod = Shop.EquipRod,
-	BuyAutoFisher = Shop.BuyAutoFisher,
+	EquipPet = Shop.EquipPet,
+	BuyFisherSlot = AutoFishers.UnlockSlot, -- mở ổ máy câu
+	BuyAutoFisher = AutoFishers.Buy, -- (tierIndex) mua thẳng máy vào ổ trống
+	UpgradeAutoFisher = AutoFishers.Upgrade, -- (slot) nâng tier tại chỗ
 	BuyIncubator = Shop.BuyIncubator,
 	BuyBagUpgrade = Shop.BuyBagUpgrade,
 	BuyGear = Shop.BuyGear,

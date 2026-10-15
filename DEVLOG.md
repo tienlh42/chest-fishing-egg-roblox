@@ -6,6 +6,200 @@
 
 ---
 
+## #38 · 15/10/2026 · Thanh progress bar cho HP và độ bền
+**Yêu cầu:** độ bền, HP thì làm thanh progress bar (thay cho chữ).
+
+**Đã làm:**
+- **`MainUI.client.lua`:** hàm `progressBar` dùng chung. Bag: ô pet có 2 thanh (xanh lá = HP, xanh dương = độ bền), ô cần có thanh độ bền (thay chữ "37/50 left"); thêm dòng chú thích màu. Shop: hàng cần đang có và hàng "Machine #n" có thanh độ bền kèm số. Market: hàng pet có thanh độ bền kèm số. HUD: thêm thanh độ bền mỏng dưới thanh HP của pet đang đi theo.
+- **HP từng pet trong Bag:** server gửi thêm `Id` pet trong `Pets.Status` (`Pets.lua`); client nhớ HP cuối cùng của từng pet (`petHPs`). Pet không equip thì HP không đổi nên con số đó đúng; pet chưa thấy lần nào hiện đầy máu.
+- **`Config.DurabilityColor(ratio)`:** màu thanh độ bền dùng chung client và server (xanh dương, cam dưới 50%, đỏ dưới `DurabilityWarnRatio`).
+- **`Plots.lua`:** bảng trên máy câu ngoài sân thêm thanh độ bền ở đáy (`addDurabilityBar`), bỏ dòng chữ "Durability x/y" (còn "Epic  7/13 chests").
+
+**File:** `MainUI.client.lua`, `Pets.lua`, `Config.lua`, `Plots.lua`. Docs: `PROJECT_OVERVIEW.md`, `ECONOMY_DESIGN.md`.
+
+**Đã kiểm tra:** VS Code không báo lỗi ở toàn bộ file Lua đã sửa (gồm `Plots.lua`, `MainUI.client.lua`). **Chưa chạy `selene .`** và **chưa Play thử** (máy không có selene / Studio MCP), nên chưa xem thanh có vừa khung / đẹp chưa.
+
+**Chưa xong / lưu ý:**
+- Cần xem trong Studio: hàng Shop / Market (thanh cao 13 px dưới 2 dòng chữ có vừa hàng 64 px không), ô Bag (2 thanh ở đáy ô), bảng trên máy có đủ chỗ không (chữ thu còn 72% chiều cao).
+- Thanh trong ô Bag không có số (quá nhỏ), số xem ở Shop / Market. Cần câu chưa có thanh trên HUD.
+- HP trong Bag chỉ đúng trong phiên (HP không lưu), pet chưa từng equip hiện đầy máu.
+
+---
+
+## #37 · 15/10/2026 · Máy câu tách ổ và tier, có độ bền, nâng tier tại chỗ (bước 4 kinh tế)
+**Yêu cầu:** làm bước 4 trong `ECONOMY_DESIGN.md` mục 11.
+
+**Đã làm:**
+- **`Config.AutoFisher`** viết lại: `PedestalPrices` (0 / 400 / 1200 / 3000 / 7000) và `Tiers` (5 tier, mỗi tier có `Name`, `Price`, `Interval`, `Capacity`, `Durability`, `Odds`). Bỏ `Prices`, `Interval`, `Capacity`, `Odds` chung. `Config.AutoFisherStored` tính kho theo tier và không quá độ bền còn lại.
+- **Dữ liệu (`Data.lua`):** `profile.FisherSlots` (số ổ đã mở, mặc định 1) và `profile.AutoFishers[ổ] = { Tier, Durability, Last, Stored }`. `reconcile` đổi máy cũ: máy ở ổ i thành tier i đầy bền, mở sẵn các ổ đã có máy.
+- **`AutoFishers.lua`:** `UnlockSlot` (mở ổ), `Buy(tierIndex)` (mua thẳng tier vào ổ trống đầu tiên), `Upgrade(slot)` (trả chênh lệch giá, chốt kho cũ, độ bền về đầy), `Collect` trừ độ bền bằng số rương thu; hết bền thì xóa máy, ổ còn lại; còn 20% thì báo. Rương ra theo `Odds` của tier.
+- **Action mới:** `BuyFisherSlot`, `BuyAutoFisher(tierIndex)`, `UpgradeAutoFisher(slot)` (`Main.server.lua`). Bỏ `Shop.BuyAutoFisher`.
+- **`Plots.lua`:** máy dựng theo tier của từng ổ (asset `AutoFisher_<Tier>`), bảng chữ hiện "Epic  7/13 chests / Durability 380/450", ổ trống ghi "Empty pedestal", ổ chưa mở ghi "Locked". Nhà dev trống bày đủ 5 tier.
+- **UI (`MainUI.client.lua`, Tool Shop):** hàng "Machine Pedestal", mục "Auto-Fishers" liệt kê 5 tier để mua, mỗi máy đang có một hàng "Machine #n" với nút nâng tier.
+
+**File:** `Config.lua`, `Data.lua`, `AutoFishers.lua`, `Plots.lua`, `Shop.lua`, `Main.server.lua`, `MainUI.client.lua`. Docs: `PROJECT_OVERVIEW.md`, `ECONOMY_DESIGN.md`.
+
+**Đã kiểm tra:** VS Code không báo lỗi ở các file Lua đã mở (không gồm `Plots.lua`, chưa mở). Bản Python của `Config.AutoFisherStored` chạy thử: kho dừng ở mức đầy khi offline 1 ngày, máy Common thu đúng tổng 120 rương rồi hỏng, máy sắp hỏng (bền 3) chỉ tích tối đa 3, nâng tier giữ kho và hồi bền. **Chưa chạy `selene .`** và **chưa Play thử** (máy không có selene / Studio MCP).
+
+**Sự cố khi làm (đã xử lý):** một lệnh thay thế dùng sai điểm kết thúc đã làm `Config.lua` phình ra 13.8 triệu ký tự (hàm mới bị chèn giữa mọi ký tự). Em gỡ đúng đoạn chèn, khôi phục lại 17,850 ký tự, kiểm tra từng khối cấu hình (cần câu, máy, pet, trứng) còn nguyên rồi mới sửa tiếp. Nếu anh thấy `Config.lua` có gì lạ thì báo em.
+
+**Chưa xong / lưu ý:**
+- Cần test trong Studio: vào game tài khoản mới (không có máy, ổ 1 mở sẵn, ổ 2-5 ghi "Locked"); mua máy Common, đợi / chỉnh `Last` để có rương, bấm [E] thu; mở ổ 2; nâng tier; đặt `Durability = 1` thử cảnh máy hỏng. Tài khoản cũ có máy: máy giữ nguyên tier theo ổ.
+- Thu nhập máy giờ thấp hơn nhiều so với trước (180 giây / rương thay vì 30 giây, chỉ Wooden ở tier Common) theo thiết kế.
+- Máy câu hỏng lúc chủ offline: hiện máy chỉ biến mất khi chủ thu lần cuối, không tự biến khi offline.
+- Chưa có thanh độ bền, chỉ có chữ.
+
+---
+
+## #36 · 15/10/2026 · Bỏ Starter Egg và Chef Cat, người mới được tặng 1 Reed Egg
+**Yêu cầu:** ban đầu chỉ tặng trứng cơ bản, không cần Chef Cat.
+
+**Đã làm:**
+- `Config.lua`: bỏ trứng `Starter`, pet `Chef Cat` (`Config.Pet.Stats`, `Config.SellPrices.Pets`) và `"Starter"` trong `Config.EggOrder`. Còn 5 trứng ↔ 5 pet (Reed → Baker Dog ... Dragon → Office Dragon).
+- `Data.lua`: người mới được tặng `Eggs.Reed = 1` thay vì Starter (cờ `StarterGiven` giữ nguyên tên để không đổi dữ liệu đã lưu).
+- Chữ và chú thích: `Tutorial.lua`, `MainUI.client.lua` ("Hatch your free Reed Egg"), `Market.lua`, `Models.lua`. Tài liệu: `ECONOMY_DESIGN.md` (mục 0, 0.1, 5.1, 8, 12), `PROJECT_OVERVIEW.md`, `HUONG_DAN.md`, `SYSTEM_DESIGN.md`, `tools/sim_economy.py`.
+
+**File:** `Config.lua`, `Data.lua`, `Tutorial.lua`, `Market.lua`, `Models.lua`, `MainUI.client.lua`.
+
+**Đã kiểm tra:** VS Code không báo lỗi ở các file Lua đã sửa; không còn chỗ nào trong `.lua` / `.py` nhắc `Starter` egg hay `Chef Cat` (grep). **Chưa chạy `selene .`** và **chưa Play thử** (máy không có selene / Studio MCP).
+
+**Chưa xong / lưu ý:**
+- Người đã lưu dữ liệu với Starter Egg hoặc pet Chef Cat sẽ có mục không còn trong `Config` (bản Studio không lưu DataStore nên chưa ảnh hưởng; bản đã publish thì cần chuyển đổi nếu có người chơi thật).
+- Reed Egg bán được (10 coins) nên người mới có thể bán luôn trứng tặng.
+- Asset `Egg_Starter`, `Pet_CatPot` vẫn trong `Assets/Models`, chưa xóa.
+- Tutorial và `ECONOMY_DESIGN.md` 0.1: người mới có pet từ ~10 giây nên mốc tiến độ vẫn như mô phỏng gốc.
+
+---
+
+## #35 · 15/10/2026 · Pet thành bản ghi, equip pet, độ bền pet (bước 3 kinh tế)
+**Yêu cầu:** làm bước 3 trong `ECONOMY_DESIGN.md` mục 11.
+
+**Đã làm:**
+- **Dữ liệu (`Data.lua`):** `profile.Pets` đổi từ danh sách tên sang danh sách bản ghi `{ Id, Name, Durability }`; thêm `NextPetId` (chỉ tăng) và `EquippedPet` (Id). `Data.NewPet(profile, name)` tạo pet đầy bền (tự equip nếu chưa có pet nào), `Data.FindPet(profile, id)`. `reconcile` đổi pet cũ (chuỗi) thành bản ghi, pet mới nhất của người cũ được equip.
+- **Config:** `Config.Pet.DurabilityMult = 20`, `Config.PetDurability(name)`, `Config.PetSellPrice(pet)`; đổi tên `RodWarnRatio` thành `DurabilityWarnRatio` (dùng chung cần và pet).
+- **`Pets.lua`:** pet đi theo là pet `EquippedPet`. HP lưu **theo từng pet** (đổi pet qua lại không hồi máu miễn phí), chỉ pet đang equip mới hồi. `Pets.Hit` trừ độ bền đúng bằng số HP pet mất; còn 20% thì báo "almost broken"; hết bền thì pet biến mất (`breakPet`), không còn pet đi theo. Profile gửi xuống client tối đa mỗi 2 giây trong lúc bị đuổi, phần còn lại gửi khi hết đuổi.
+- **`Shop.EquipPet(id)`** (Action `EquipPet`): kiểm tra sở hữu, chặn đổi pet khi `Guard.IsChasing`.
+- **`Market.SellPet(id)`:** bán từng pet, giá nhân tỉ lệ độ bền còn lại. Đổi từ "bán theo tên, Sell 1 / Sell All".
+- **`Hatchery.lua`, `House.lua`:** dùng `Data.NewPet`, kệ trưng bày đọc `pet.Name`.
+- **UI (`MainUI.client.lua`):** Bag hiện mỗi pet 1 ô (độ bền còn lại, nhãn EQUIPPED), **bấm ô để equip**; ô cần câu đã có cũng bấm để equip. Market liệt kê từng pet với nút "Sell <giá>".
+
+**File:** `Data.lua`, `Config.lua`, `Pets.lua`, `Shop.lua`, `Market.lua`, `Hatchery.lua`, `House.lua`, `Fishing.lua`, `Main.server.lua`, `MainUI.client.lua`. Docs: `PROJECT_OVERVIEW.md`, `ECONOMY_DESIGN.md`.
+
+**Đã kiểm tra:** VS Code không báo lỗi ở các file Lua đã sửa. **Chưa chạy `selene .`** (máy không có selene / rojo / luau) và **chưa Play thử trong Studio** (không có Studio MCP).
+
+**Chưa xong / lưu ý:**
+- Cần test trong Studio: (1) tài khoản cũ có pet dạng tên: vào game thấy pet cũ đi theo, Bag hiện đủ pet; (2) nở trứng khi chưa có pet: tự equip; (3) có 2 pet: bấm ô pet trong Bag đổi pet, thử đổi lúc ngỗng đuổi (phải bị chặn); (4) để ngỗng đánh pet, xem độ bền trong Bag giảm; set `Durability = 1` trong profile để thử cảnh pet hỏng (pet biến mất, ngỗng bắt được người); (5) Market bán 1 pet, giá theo độ bền.
+- **Starter Egg vẫn còn** (chưa làm phần "khởi đầu chỉ có cần mặc định", `ECONOMY_DESIGN.md` mục 0.1), nên người mới vẫn được tặng trứng Chef Cat.
+- Đổi pet chỉ hiện ngay sau ~0.4 giây; pet đang kiệt sức (HP 0) vẫn equip được nhưng chỉ hồi lại khi equip và đứng ở nhà.
+- Chưa có thanh độ bền, chỉ có chữ "đã dùng / tối đa".
+
+---
+
+## #34 · 15/10/2026 · Độ bền cần câu (bước 2 kinh tế)
+**Yêu cầu:** làm tiếp bước 2: cần câu có độ bền, hết thì biến mất, không sửa được.
+
+**Đã làm:**
+- `Config.lua`: `Durability` cho 5 cần trả phí (Catfish 50, Turtle 100, Fox 250, Cat 500, Dragon 1000 rương); Duckling không có = không hỏng. `Config.RodWarnRatio = 0.2`.
+- `Data.lua`: `profile.Rods[id]` là số độ bền còn lại (Duckling vẫn `true`). `reconcile` đổi cần cũ lưu `true` thành đầy bền.
+- `Shop.BuyRod`: mua cần được độ bền đầy. Cần hỏng thì không còn trong `profile.Rods` nên mua lại được giá gốc.
+- `Fishing.lua`: hàm `wearRod` gọi sau mỗi rương kéo lên **ở hồ cấm** (ao, lượt hụt không hao). Còn 20% thì báo "almost broken", hết bền thì xóa cần, đặt `EquippedRod` về cần đầu tiên, phát lại cần (`GiveRod`), báo "broke".
+- `MainUI.client.lua`: Shop hiện "Catfish Rod (37/50 left)" hoặc "(lasts 50 chests)", Duckling "(never breaks)". Bag hiện "37/50 left" dưới tên cần.
+
+**File:** `Config.lua`, `Data.lua`, `Shop.lua`, `Fishing.lua`, `MainUI.client.lua`. Docs: `PROJECT_OVERVIEW.md`, `ECONOMY_DESIGN.md`.
+
+**Đã kiểm tra:** VS Code không báo lỗi ở 6 file Lua đã sửa (kể cả `MainUI.client.lua`). **Chưa chạy `selene .`** (máy không có selene / rojo / luau) và **chưa Play thử trong Studio** (phiên này không có Studio MCP).
+
+**Chưa xong / lưu ý:**
+- Cần test trong Studio: câu ở hồ nhiều lần, xem độ bền giảm và Shop / Bag cập nhật; set `profile.Rods.Catfish = 1` để thử cảnh hỏng (cần biến mất, về Duckling, tool được phát lại); ao không hao.
+- Cần hỏng lúc đang cầm: `GiveRod` hủy Tool đang cầm rồi cầm cái mới, chưa kiểm tra có giật animation Catch không.
+- UI mới chỉ hiện chữ, chưa có thanh độ bền. Dữ liệu đã lưu: cần cũ được coi là đầy bền.
+- Bước tiếp: pet thành bản ghi + equip pet + độ bền pet.
+
+---
+
+## #33 · 15/10/2026 · Bảng tỉ lệ rương thay Luck, giá cần mới, ao chỉ ra Wooden (bước 1 kinh tế)
+**Yêu cầu:** làm bảng tỉ lệ (`ECONOMY_DESIGN.md` mục 11 bước 1). Cướp, két sắt để sau cùng.
+
+**Đã làm:**
+- `Config.lua`: bỏ `Weight` của rương và `Luck` của cần; mỗi cần có `Odds` (5 số); thêm `Config.RollChest(odds)` và `Config.TopChestPercent(odds)`; `WeightedRoll` bỏ tham số luck (chỉ còn dùng cho pool pet ở `Hatchery`). Giá cần: Catfish 150, Turtle 500, Fox 1800, Cat 6000, Dragon 18000.
+- Ao: `Config.Fishing.PondOdds` chỉ Wooden, `PondTimeMult` 1.5 thành 5; bỏ `LakeLuck`.
+- `Fishing.lua` tung rương bằng `RollChest(rod.Odds)` ở hồ, `PondOdds` ở ao. `AutoFishers.lua` dùng `Config.AutoFisher.Odds` (**tạm chỉ Wooden**, đến bước 4 mới tách theo tier).
+- `MainUI.client.lua`: bảng Shop và Bag hiện "Purple+ x%" thay vì "Luck x".
+
+**File:** `Config.lua`, `Fishing.lua`, `AutoFishers.lua`, `MainUI.client.lua`. Docs: `PROJECT_OVERVIEW.md`, `ECONOMY_DESIGN.md`.
+
+**Đã kiểm tra:**
+- VS Code không báo lỗi ở `Config.lua`, `Fishing.lua`, `AutoFishers.lua`.
+- Tung thử 200,000 lần mỗi cần bằng bản Python của `RollChest` đọc đúng `Odds` từ `Config.lua`: tỉ lệ thực tế khớp bảng (vd. Duckling 87.98 / 10.07 / 1.75 / 0.19 / 0.02; Dragon 25.97 / 28.02 / 28.05 / 13.91 / 4.06), ao luôn ra Wooden.
+- **Chưa chạy `selene .`** (máy này không có selene / rojo / luau), **chưa test trong Studio** (phiên này không có Studio MCP).
+
+**Chưa xong / lưu ý:**
+- Cần chạy `selene .`, chép 4 file vào Studio, Play: câu thử ở hồ và ao, mở Shop và Bag xem dòng "Purple+".
+- Máy câu hiện chỉ ra Wooden (trước đây ra đủ 5 loại) nên thu nhập máy giảm cho tới bước 4.
+- Người chơi đã lưu: giá cần đổi không ảnh hưởng cần đã mua.
+
+---
+
+## #32 · 15/10/2026 · Chốt: không sửa chữa, mọi pet như nhau, khởi đầu chỉ có cần mặc định
+**Yêu cầu:** anh Scott trả lời câu hỏi mở: không cho sửa; mọi pet như nhau (Chef Cat cũng hỏng); người chơi mới chỉ có 1 cần mặc định và không có gì thêm. Hỏi em đề xuất gì về cướp.
+
+**Đã làm:** ghi 3 điều trên vào `ECONOMY_DESIGN.md` mục 0, thêm mục 0.1 (hệ quả: vòng đầu là ao nhà, Chef Cat mất nguồn khi bỏ Starter Egg, `Tutorial.lua` / `Data.Load` phải đổi, Catfish đến chậm hơn ~2.5 phút), cập nhật mục 12. Không sửa code.
+
+**Chưa xong / lưu ý:** đề xuất về cướp trả lời trong chat, chưa ghi vào tài liệu cho tới khi anh duyệt.
+
+---
+
+## #31 · 15/10/2026 · Thiết kế: độ bền vật phẩm, Chìa vạn năng, kho vô hạn
+**Yêu cầu:** mọi vật phẩm (cần, máy câu, pet) có độ bền, hết thì biến mất. Cướp phải mua Chìa vạn năng (mở 50%), mỗi vụ chọn tối đa số rương túi mang được, cướp ở máy câu và kho. Ô mang trên người có giới hạn, về nhà cất vào kho (vô hạn ô).
+
+**Đã làm:**
+- Viết lại `ECONOMY_DESIGN.md` (bản 2) và mở rộng `tools/sim_economy.py`: độ bền + hao mòn, máy câu tách ổ / giá mua thẳng từng tier, độ bền pet, tiến độ theo thu nhập ròng, cướp có chìa + cấp khóa cửa.
+- Cập nhật `SYSTEM_DESIGN.md` mục 9 (ghi chú luật cướp mới), `PROJECT_OVERVIEW.md`.
+
+**Phát hiện từ mô phỏng:**
+- Hao mòn đặt ~12-13% thu nhập với cần, ~20% với máy câu. Cần Dragon sống ~471 phút, cần Catfish ~27 phút. Giữ **Duckling không hỏng** để không kẹt không có cần.
+- Ao làm hao cần thì cầm Dragon ra ao lỗ 17 coins/phút, nên đề xuất ao **không hao cần**.
+- Máy câu cần giá mua thẳng từng tier (300 / 1000 / 3500 / 10000 / 30000) vì máy hỏng phải mua lại; ổ máy tách riêng (không hỏng). Hoàn vốn máy từ 1.4 giờ (Common) đến 17.9 giờ (Mythic).
+- Kẻ cướp **tự chọn** món thì lời gấp 5-10 lần câu hồ nếu không có giá. Với chìa 200 coins: người mới và giữa game cướp lỗ, người giàu không khóa lời 2-3 lần câu hồ, khóa cửa 3 (30,000 coins) làm cướp hết lời. Nên không cần luật bảo vệ người mới riêng.
+- Túi 6 ô chỉ tăng lời cướp ~4% (món thứ 5, 6 giá trị thấp).
+
+**File:** `ECONOMY_DESIGN.md`, `tools/sim_economy.py`, `SYSTEM_DESIGN.md`, `PROJECT_OVERVIEW.md`, `DEVLOG.md`. **Không sửa code Luau, không đụng Studio.**
+
+**Đã kiểm tra:** chạy `python tools/sim_economy.py`, đối chiếu từng bảng với số trong `ECONOMY_DESIGN.md`.
+
+**Chưa xong / lưu ý:**
+- Toàn bộ là [ĐỀ XUẤT]. Cần đo ngoài game: tỉ lệ mất túi mỗi chuyến, xác suất kẻ cướp thoát về nhà (giả định 40%), rương/phút thật khi 4-8 người, HP pet bị mất mỗi giờ (giả định 6 x HP).
+- Câu hỏi mở ở `ECONOMY_DESIGN.md` mục 12: có cho sửa chữa không, Chef Cat có hỏng không, ao có hao cần không, có thêm thời gian mở rương để kho có hàng cho cướp không.
+- Pet phải đổi từ danh sách tên sang bản ghi `{ Id, Name, Durability }`, cần chuyển đổi dữ liệu cũ khi code.
+
+---
+
+## #30 · 15/10/2026 · Thiết kế kinh tế farm (câu, máy câu, cướp) + script mô phỏng
+**Yêu cầu:** thiết kế hệ thống kiếm tiền và cây vật phẩm. Anh Scott chốt: equip cần và pet tự do; nâng cấp chỉ bằng coins (bỏ Pearl, Essence); chưa tính Robux; tiền kiếm bằng farm (câu, máy câu, cướp).
+
+**Đã làm:**
+- Viết `tools/sim_economy.py`: mô phỏng giá trị kỳ vọng thu nhập câu hồ, ao, máy câu, tiến độ mua và lời của cướp nhà.
+- Viết `ECONOMY_DESIGN.md`: vòng kiếm tiền, bảng tỉ lệ rương riêng từng cần (thay công thức Luck), ao nhà, máy câu tách slot và tier, luật kinh tế cướp nhà, equip cần / pet, perk, chỗ tiêu, tiến độ, bảng thay đổi so với Config.
+- Cập nhật tham chiếu ở `CLAUDE.md`, `PROJECT_OVERVIEW.md`, `SYSTEM_DESIGN.md` (mục 4.2).
+
+**Phát hiện từ mô phỏng (đáng nhớ):**
+- Công thức `luck^(i-1)` hiện tại quá hào phóng: cần Duckling ở hồ (Luck 1 × LakeLuck 1.5) đã ra 3.7% Rainbow, ~164 coins/phút, nên mọi giá hiện tại quá rẻ. Thêm trần thì quá phẳng (cần Dragon chỉ hơn Duckling 1.8 lần).
+- Giá trị rương bị tiền bán trứng chi phối (Rainbow ~822 coins kỳ vọng, 450 là coins).
+- Ao nhà theo luật cũ lời hơn hồ ở đầu game (không ngỗng, không chạy về, không tranh rương).
+- Cướp mà cho tự chọn món xịn nhất thì lời gấp 5 đến 10 lần câu hồ; lấy ngẫu nhiên 4 món thì 0.45 đến 0.75 lần.
+- Nếu Stash mở rương tức thì thì kho luôn trống, cướp vô nghĩa. Kho trong máy câu và trứng chờ ấp là thứ cướp được.
+
+**File:** `tools/sim_economy.py` (mới), `ECONOMY_DESIGN.md` (mới), `CLAUDE.md`, `PROJECT_OVERVIEW.md`, `SYSTEM_DESIGN.md`, `DEVLOG.md`. **Không sửa code Luau, không đụng Studio.**
+
+**Đã kiểm tra:** chạy `python tools/sim_economy.py` ra các bảng đúng với số trong `ECONOMY_DESIGN.md`.
+
+**Chưa xong / lưu ý:**
+- Toàn bộ là [ĐỀ XUẤT]: số lấy từ mô hình thô, cần đo ngoài game 3 thứ (tỉ lệ mất túi mỗi chuyến, rương/phút thật khi 4-8 người, thời gian chạy về nhà).
+- Chưa code: bảng `Odds`, `EquippedPet`, tier máy câu, perk (`Loadout.lua`), kho rương, cướp nhà. Thứ tự làm ở `ECONOMY_DESIGN.md` mục 9.
+- Perk loot của cần (CoinMult, EggChanceMult) chưa được tính trong bảng thu nhập.
+
+---
+
 ## #29 · 14/10/2026 · Bag dạng lưới có hình, nhà trống đầy đồ để test cướp (dev)
 **Yêu cầu:** bảng Bag dạng grid, phân loại, kèm hình đồ; trong môi trường dev cho các nhà khác đầy đồ, máy câu, trứng để đi cướp.
 
@@ -25,7 +219,8 @@
 ---
 
 ## #28 · 14/10/2026 · Import asset từ repo roblox-assets (cần, pet, trứng, rương, máy câu, ngỗng)
-**Yêu cầu:** import các asset trong repo `assets-roblox` (thực tế là `C:\Robloxoblox-assets`) vào game, ghép đủ, mở rộng Config theo asset.
+**Yêu cầu:** import các asset trong repo `assets-roblox` (thực tế là `C:\Roblox
+oblox-assets`) vào game, ghép đủ, mở rộng Config theo asset.
 
 **Đã làm:**
 - **Import:** `tools/prepare_assets.py` chép 29 file `.rbxmx` vào `Assets/Models/` (đồng bộ vào `ReplicatedStorage/CustomModels` qua Rojo: `default.project.json` có `$path`). Script chỉnh nhẹ: tắt script client trên bản mẫu (Models.Get bật lại trên bản sao), vá `RodEffects` (bỏ Beam dây + giọt nước ở móc, vì game tự vẽ dây và phao).

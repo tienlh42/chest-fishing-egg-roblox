@@ -90,8 +90,8 @@ Hiện tại game dùng **model tạm** dựng bằng Part (`ReplicatedStorage/M
 |---|---|
 | Cần: Duckling / Catfish / Turtle / Fox / Lucky Cat / Rainbow Dragon | `Rod_Starter`, `Rod_Catfish`, `Rod_Turtle`, `Rod_Fox`, `Rod_Cat`, `Rod_Dragon` |
 | Rương: Wooden / Blue / Purple / Golden / Rainbow | `TreasureChest_Common` ... `TreasureChest_Mythic` |
-| Trứng: Starter / Reed / Bubble / Crystal / Gold / Dragon | `Egg_Starter` ... `Egg_Dragon` |
-| Pet: Chef Cat / Baker Dog / Muscle Duck / Magician Cat / K9 Dog / Office Dragon | `Pet_CatPot`, `Pet_DogBaker`, `Pet_DuckMuscle`, `Pet_CatMagician`, `Pet_DogK9`, `Pet_DragonOffice` |
+| Trứng: Reed / Bubble / Crystal / Gold / Dragon | `Egg_Reed` ... `Egg_Dragon` |
+| Pet: Baker Dog / Muscle Duck / Magician Cat / K9 Dog / Office Dragon | `Pet_DogBaker`, `Pet_DuckMuscle`, `Pet_CatMagician`, `Pet_DogK9`, `Pet_DragonOffice` |
 | Máy câu thứ 1..5 | `AutoFisher_Common` ... `AutoFisher_Mythic` |
 | Ngỗng bảo vệ | `PoliceGoose` |
 

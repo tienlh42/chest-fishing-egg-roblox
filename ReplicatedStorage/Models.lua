@@ -35,7 +35,6 @@ local CHESTS = {
 local EGGS = {
 	["Common Egg"] = { Color = Color3.fromRGB(245, 235, 200) },
 	["Rare Egg"] = { Color = Color3.fromRGB(170, 90, 255), Glow = true },
-	["Starter Egg"] = { Color = Color3.fromRGB(255, 190, 90), Glow = true },
 }
 
 local PETS = {

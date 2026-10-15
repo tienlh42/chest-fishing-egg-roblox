@@ -117,6 +117,8 @@ Số liệu rương hiện tại:
 
 ### 4.2 Công thức Luck cần thiết kế lại [ĐÃ CHỐT là phải sửa, công thức mới CHƯA CHỐT]
 
+> **Cập nhật 15/10/2026:** đề xuất thay công thức Luck bằng **bảng tỉ lệ rương riêng cho từng cần và từng máy câu**, kèm giá, thu nhập và luật cướp: xem `ECONOMY_DESIGN.md` mục 3, 4, 5. Phần dưới giữ lại để biết vì sao phải sửa.
+
 `WeightedRoll` nhân trọng số thứ `i` với `luck^(i-1)`. Với Legend Rod (Luck 4) ở hồ (×1.5 = 6) và 3 rương, trọng số thành 70 / 150 / 180, tức Diamond chiếm khoảng 45%. Khi lên 5 rương, rương cuối bị nhân 6⁴ = 1296 và trở thành loại phổ biến nhất.
 
 Cần công thức có trần (ví dụ tăng tuyến tính theo vị trí, hoặc giới hạn hệ số tối đa). Con số mục tiêu em đề xuất để tinh chỉnh, **[ĐỀ XUẤT]**:
@@ -170,7 +172,7 @@ Hiện `Bag.Deposit` cộng ngay `coins` và `eggs` vào profile rồi lưu (n�
 
 ### 6.1 Trứng và ấp
 
-- **[ĐÃ CÓ]** `Config.Eggs`: Common (ấp 10s), Rare (20s), Starter (5s, tặng người mới, luôn ra Cat, không bán được). `Hatchery.lua` lưu `profile.Incubators[slot] = { Tier, Start = os.time() }` nên **nở được cả khi offline**. Nở xong tung pet bằng `Config.WeightedRoll(egg.Pets)`.
+- **[ĐÃ CÓ]** `Config.Eggs`: Common (ấp 10s), Rare (20s), (Starter Egg đã bỏ 15/10/2026: người mới được tặng 1 Reed Egg). `Hatchery.lua` lưu `profile.Incubators[slot] = { Tier, Start = os.time() }` nên **nở được cả khi offline**. Nở xong tung pet bằng `Config.WeightedRoll(egg.Pets)`.
 - Máy ấp: bắt đầu 1, tối đa 4 (mua máy 2, 3, 4 giá 300 / 1500 / 6000).
 - **[ĐÃ CHỐT]** Trứng 5 cấp. Trứng **cất được** trong kho rồi đem đi ấp. Trứng **đã đặt vào máy ấp thì không bị cướp** (**[ĐỀ XUẤT]**: khuyến khích người chơi ấp ngay).
 - **[ĐỀ XUẤT]** Trứng cấp X nở ra pet **cấp X** (cấp Common có 2 pet), kèm một xác suất nhỏ nở ra pet cấp X+1. Hiện mỗi trứng có pool 3 pet.
@@ -183,7 +185,7 @@ Hiện `Bag.Deposit` cộng ngay `coins` và `eggs` vào profile rồi lưu (n�
 
 | Pet | Cấp | Vai trò | Tham số có thể chỉnh |
 |---|---|---|---|
-| CatPot | Common | Chống đỡ cơ bản, gõ nồi báo động khi yếu | HP |
+| CatPot (đã bỏ 15/10/2026) | Common | Chống đỡ cơ bản, gõ nồi báo động khi yếu | HP |
 | DogBaker | Common | Rơi vụn bánh, ngỗng dừng ngắn | `StunTime` |
 | DuckMuscle | Rare | Chịu đòn lâu nhất | HP cao nhất |
 | CatMagician | Epic | Ngỗng choáng lâu hơn | `StunTime` |
@@ -273,6 +275,8 @@ Phát hiện gian lận kỹ thuật (dịch chuyển bất thường, tốc đ�
 ---
 
 ## 9. Cướp nhà [ĐÃ CHỐT]
+
+> **Cập nhật 15/10/2026 (đè lên phần dưới khi khác nhau):** cướp phải dùng **Chìa vạn năng** (tỉ lệ mở 50%, tiêu mỗi lần thử, chủ nhà mua khóa để giảm tỉ lệ). Mục tiêu cướp được là **kho nhà** và **kho trong máy câu**. Kẻ cướp **tự chọn** món, tối đa bằng số ô túi trống (không còn "giữ [E] lấy 1 món"). **Kho nhà không giới hạn ô**, túi mang trên người thì có giới hạn và phải về nhà cất. Chi tiết và số liệu: `ECONOMY_DESIGN.md` mục 7. Mọi vật phẩm (cần, máy câu, pet) cũng có **độ bền** và biến mất khi hết (`ECONOMY_DESIGN.md` mục 6).
 
 **Điều kiện:** chỉ cướp được nhà của người **đang online**. Plot chỉ có chủ khi người đó trong game, nên khớp với `Plots.lua` hiện có (thu hồi plot khi chủ thoát).
 

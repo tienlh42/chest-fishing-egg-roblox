@@ -7,6 +7,7 @@ Roblox game "Chest Fishing & Eggs / Hồ Không Cho Câu", đang ở bản **MVP
 2. `DEVLOG.md`: đã làm gì, theo thứ tự thời gian (mới nhất ở trên)
 3. Khi đụng tới map: `MAP_LEVEL1.md`, `PARK_REDESIGN.md` (có các bẫy kỹ thuật của Terrain)
 4. Khi đụng tới độ hiếm, rương / Stash, trứng, pet, ngỗng, vùng an toàn, cướp nhà: `SYSTEM_DESIGN.md` (thiết kế đích, có nhãn phần đã code / đã chốt / chưa chốt)
+5. Khi đụng tới giá, thu nhập, tỉ lệ rương, máy câu, perk cần / pet, luật cướp: `ECONOMY_DESIGN.md` (kinh tế farm, số liệu từ `tools/sim_economy.py`)
 
 ## Quy tắc
 - Chữ hiện cho người chơi bằng **tiếng Anh**. Comment code và tài liệu bằng **tiếng Việt**. Trả lời người dùng bằng tiếng Việt.

@@ -3,36 +3,64 @@
 
 local Config = {}
 
--- Rương: Weight càng cao càng dễ câu được.
--- Xếp từ thường -> hiếm: cần câu có Luck cao sẽ tăng tỉ lệ các rương ở cuối danh sách.
+-- Rương: xếp từ thường -> hiếm. Tỉ lệ ra từng loại KHÔNG nằm ở đây mà nằm ở nơi tạo ra rương (Odds của cần câu, của ao, của máy câu):
+-- Odds là bảng 5 số, mỗi số ứng với 1 rương theo đúng thứ tự dưới đây (xem Config.RollChest).
 -- Model = tên asset trong CustomModels (Assets/Models, từ repo roblox-assets). Asset có sẵn animation Spawn / Idle / Open / Vanish.
 -- HoldTime: số giây phải giữ nút để kéo rương lên (nhân với Speed của cần). Rương càng hiếm càng lâu = càng rủi ro.
 -- Eggs: mỗi rương ra tối đa 1 quả trứng. Xét lần lượt từ trên xuống (trứng xịn trước): trúng tỉ lệ nào thì ra loại đó.
 --   Tier là khoá trong Config.Eggs. Rương càng hiếm càng dễ ra trứng xịn.
 Config.Chests = {
-	{ Name = "Wooden Chest", Model = "TreasureChest_Common", Weight = 60, Coins = { 5, 15 }, HoldTime = 6, Eggs = {
+	{ Name = "Wooden Chest", Model = "TreasureChest_Common", Coins = { 5, 15 }, HoldTime = 6, Eggs = {
 		{ Tier = "Reed", Chance = 0.30 },
 	} },
-	{ Name = "Blue Chest", Model = "TreasureChest_Rare", Weight = 25, Coins = { 20, 60 }, HoldTime = 9, Eggs = {
+	{ Name = "Blue Chest", Model = "TreasureChest_Rare", Coins = { 20, 60 }, HoldTime = 9, Eggs = {
 		{ Tier = "Bubble", Chance = 0.12 },
 		{ Tier = "Reed", Chance = 0.55 },
 	} },
-	{ Name = "Purple Chest", Model = "TreasureChest_Epic", Weight = 10, Coins = { 60, 150 }, HoldTime = 12, Eggs = {
+	{ Name = "Purple Chest", Model = "TreasureChest_Epic", Coins = { 60, 150 }, HoldTime = 12, Eggs = {
 		{ Tier = "Crystal", Chance = 0.12 },
 		{ Tier = "Bubble", Chance = 0.35 },
 		{ Tier = "Reed", Chance = 0.80 },
 	} },
-	{ Name = "Golden Chest", Model = "TreasureChest_Legendary", Weight = 4, Coins = { 150, 300 }, HoldTime = 15, Eggs = {
+	{ Name = "Golden Chest", Model = "TreasureChest_Legendary", Coins = { 150, 300 }, HoldTime = 15, Eggs = {
 		{ Tier = "Gold", Chance = 0.15 },
 		{ Tier = "Crystal", Chance = 0.35 },
 		{ Tier = "Bubble", Chance = 1.00 },
 	} },
-	{ Name = "Rainbow Chest", Model = "TreasureChest_Mythic", Weight = 1, Coins = { 300, 600 }, HoldTime = 18, Eggs = {
+	{ Name = "Rainbow Chest", Model = "TreasureChest_Mythic", Coins = { 300, 600 }, HoldTime = 18, Eggs = {
 		{ Tier = "Dragon", Chance = 0.12 },
 		{ Tier = "Gold", Chance = 0.35 },
 		{ Tier = "Crystal", Chance = 1.00 },
 	} },
 }
+
+-- Chọn 1 rương theo bảng tỉ lệ `odds` (5 số ứng với Config.Chests, tổng không cần bằng 100)
+function Config.RollChest(odds)
+	local total = 0
+	for _, weight in ipairs(odds) do
+		total += weight
+	end
+	local roll = math.random() * total
+	for i, weight in ipairs(odds) do
+		roll -= weight
+		if roll <= 0 and weight > 0 then
+			return Config.Chests[i]
+		end
+	end
+	return Config.Chests[#Config.Chests]
+end
+
+-- % rương từ Purple trở lên trong bảng tỉ lệ (để hiện cho người chơi thấy cần nào ra rương xịn hơn)
+function Config.TopChestPercent(odds)
+	local total, top = 0, 0
+	for i, weight in ipairs(odds) do
+		total += weight
+		if i >= 3 then
+			top += weight
+		end
+	end
+	return top / total * 100
+end
 
 -- Tung trứng của 1 rương. Trả về tier (khoá trong Config.Eggs) hoặc nil (không có trứng)
 function Config.RollChestEgg(chest)
@@ -47,8 +75,7 @@ end
 -- Trứng: HatchTime tính bằng giây (trứng vẫn nở khi người chơi offline). Mỗi trứng nở đúng 1 loại pet (asset Egg_* <-> Pet_*).
 -- Model = tên asset trong CustomModels. Tên hiện cho người chơi: "<Tier> Egg".
 Config.Eggs = {
-	-- Trứng khởi đầu: người mới được tặng 1 quả (Data.Load), nở nhanh. Không bán được, không câu được.
-	Starter = { Model = "Egg_Starter", HatchTime = 5, Pets = { { Name = "Chef Cat", Weight = 1 } } },
+	-- Reed là trứng cơ bản nhất: người mới được tặng 1 quả (Data.Load)
 	Reed = { Model = "Egg_Reed", HatchTime = 10, Pets = { { Name = "Baker Dog", Weight = 1 } } },
 	Bubble = { Model = "Egg_Bubble", HatchTime = 20, Pets = { { Name = "Muscle Duck", Weight = 1 } } },
 	Crystal = { Model = "Egg_Crystal", HatchTime = 40, Pets = { { Name = "Magician Cat", Weight = 1 } } },
@@ -57,7 +84,7 @@ Config.Eggs = {
 }
 
 -- Thứ tự hiển thị trứng (từ thường -> hiếm)
-Config.EggOrder = { "Starter", "Reed", "Bubble", "Crystal", "Gold", "Dragon" }
+Config.EggOrder = { "Reed", "Bubble", "Crystal", "Gold", "Dragon" }
 
 -- ===== CÂU CÁ: GIỮ NÚT ĐỂ KÉO =====
 -- Hồ chung ("Lake") là hồ CẤM CÂU: rương kéo được vào túi tạm, phải mang về Stash ở nơi an toàn mới giữ được.
@@ -68,8 +95,9 @@ Config.Fishing = {
 	-- Câu lén: NHẢ nút = tạm dừng, giữ nguyên tiến độ (phao vẫn dưới nước). Giữ lại để kéo tiếp.
 	Leash = 12, -- đang tạm dừng mà đi xa chỗ câu quá số stud này thì đứt dây
 	PauseTimeout = 40, -- tạm dừng lâu quá số giây này thì rương tuột khỏi lưỡi
-	LakeLuck = 1.5, -- hồ cấm nhân thêm Luck (dễ ra rương hiếm hơn)
-	PondTimeMult = 1.5, -- ao riêng: thời gian kéo nhân hệ số này
+	-- Ao riêng: chỉ ra rương gỗ, kéo chậm gấp 5 để luôn kém hồ cấm (ao không ngỗng, không phải chạy về, không tranh rương)
+	PondOdds = { 100, 0, 0, 0, 0 },
+	PondTimeMult = 5, -- ao riêng: thời gian kéo nhân hệ số này
 	NoiseDelay = 3, -- kéo được tổng cộng bao nhiêu giây thì bắt đầu gây tiếng động
 	NoiseRadius = 45, -- ngỗng trong bán kính này nghe thấy tiếng câu (≈ 1/3 vòng tuần tra quanh hồ)
 }
@@ -104,10 +132,12 @@ Config.Pet = {
 	MaxHP = 100, -- HP mặc định nếu pet không có trong Stats
 	WarnRatio = 0.3, -- HP dưới 30% máu tối đa thì pet kêu báo nguy
 	HealTime = 40, -- giây để hồi từ 0 đến đầy (pet nào cũng vậy)
+	-- Độ bền pet = tổng HP pet chịu được trong đời = HP tối đa x hệ số này. Mỗi 1 HP ngỗng đánh mất, độ bền mất 1.
+	-- Hồi HP ở nhà KHÔNG hồi độ bền. Hết bền thì pet biến mất, không sửa được. Mọi pet như nhau.
+	DurabilityMult = 20,
 	-- Chỉ số riêng từng pet: HP càng cao càng chặn ngỗng được lâu (ngỗng đánh Guard.PetDamage HP/giây)
 	-- Model = tên asset trong CustomModels (Assets/Models); animation đổi bằng attribute "Anim" (Pets.lua)
 	Stats = {
-		["Chef Cat"] = { Model = "Pet_CatPot", HP = 100 }, -- ~20s
 		["Baker Dog"] = { Model = "Pet_DogBaker", HP = 130 }, -- ~26s
 		["Muscle Duck"] = { Model = "Pet_DuckMuscle", HP = 220 }, -- ~44s, chịu đòn lâu nhất
 		["Magician Cat"] = { Model = "Pet_CatMagician", HP = 170 }, -- ~34s
@@ -120,6 +150,17 @@ Config.Pet = {
 function Config.PetMaxHP(petName)
 	local stats = petName and Config.Pet.Stats[petName]
 	return stats and stats.HP or Config.Pet.MaxHP
+end
+
+-- Độ bền tối đa của 1 loại pet
+function Config.PetDurability(petName)
+	return Config.PetMaxHP(petName) * Config.Pet.DurabilityMult
+end
+
+-- Giá bán 1 pet (bản ghi { Name, Durability }): giá gốc nhân tỉ lệ độ bền còn lại, pet sắp hỏng bán rẻ
+function Config.PetSellPrice(pet)
+	local base = Config.SellPrices.Pets[pet.Name] or 0
+	return math.floor(base * math.clamp(pet.Durability / Config.PetDurability(pet.Name), 0, 1) + 0.5)
 end
 
 -- Ngỗng bảo vệ. Patrol = các điểm tuần tra quanh hồ (toạ độ thế giới, tự bám xuống mặt đất).
@@ -173,26 +214,48 @@ Config.Animations = {
 }
 
 -- ===== TOOL SHOP =====
--- Cần câu. Luck: nhân tỉ lệ rương hiếm. Speed: nhân thời gian chờ (nhỏ hơn = nhanh hơn).
+-- Cần câu. Odds: tỉ lệ ra 5 loại rương ở HỒ CẤM (Wooden / Blue / Purple / Golden / Rainbow, xem Config.RollChest). Speed: nhân thời gian chờ (nhỏ hơn = nhanh hơn).
+-- Mỗi cần cho thu nhập gấp ~1.3-1.6 lần cần trước, giá mỗi bậc ~3-4 lần (xem ECONOMY_DESIGN.md, tools/sim_economy.py).
+-- Durability: số rương kéo lên được Ở HỒ CẤM trước khi cần hỏng và BIẾN MẤT (ao không hao, hụt không hao). Không có = không bao giờ hỏng (cần mặc định).
+-- Không sửa được: hỏng thì mua lại giá gốc. Cần đang cầm hỏng thì tự quay về cần đầu tiên.
 -- Model = tên asset trong CustomModels (Assets/Models, rig Motor6D + animation Idle / Cast / Reel / Catch / Miss).
 -- Color/Length chỉ dùng cho model tạm khi thiếu asset.
 Config.Rods = {
-	{ Id = "Basic", Name = "Duckling Rod", Model = "Rod_Starter", Price = 0, Luck = 1, Speed = 1, Color = Color3.fromRGB(230, 200, 110), Length = 7 },
-	{ Id = "Catfish", Name = "Catfish Rod", Model = "Rod_Catfish", Price = 150, Luck = 1.25, Speed = 0.92, Color = Color3.fromRGB(110, 130, 150), Length = 7 },
-	{ Id = "Turtle", Name = "Turtle Rod", Model = "Rod_Turtle", Price = 600, Luck = 1.8, Speed = 0.8, Color = Color3.fromRGB(60, 120, 200), Length = 8 },
-	{ Id = "Fox", Name = "Fox Rod", Model = "Rod_Fox", Price = 2500, Luck = 2.5, Speed = 0.7, Color = Color3.fromRGB(150, 100, 220), Length = 8 },
-	{ Id = "Cat", Name = "Lucky Cat Rod", Model = "Rod_Cat", Price = 8000, Luck = 3.3, Speed = 0.58, Color = Color3.fromRGB(255, 190, 40), Length = 9 },
-	{ Id = "Dragon", Name = "Rainbow Dragon Rod", Model = "Rod_Dragon", Price = 25000, Luck = 4.5, Speed = 0.45, Color = Color3.fromRGB(240, 240, 250), Length = 10 },
+	{ Id = "Basic", Name = "Duckling Rod", Model = "Rod_Starter", Price = 0, Odds = { 88, 10, 1.8, 0.2, 0.02 }, Speed = 1, Color = Color3.fromRGB(230, 200, 110), Length = 7 },
+	{ Id = "Catfish", Name = "Catfish Rod", Model = "Rod_Catfish", Price = 150, Odds = { 78, 18, 3.4, 0.55, 0.05 }, Speed = 0.92, Durability = 50, Color = Color3.fromRGB(110, 130, 150), Length = 7 },
+	{ Id = "Turtle", Name = "Turtle Rod", Model = "Rod_Turtle", Price = 500, Odds = { 66, 25, 7, 1.7, 0.3 }, Speed = 0.8, Durability = 100, Color = Color3.fromRGB(60, 120, 200), Length = 8 },
+	{ Id = "Fox", Name = "Fox Rod", Model = "Rod_Fox", Price = 1800, Odds = { 52, 30, 13, 4.2, 0.8 }, Speed = 0.7, Durability = 250, Color = Color3.fromRGB(150, 100, 220), Length = 8 },
+	{ Id = "Cat", Name = "Lucky Cat Rod", Model = "Rod_Cat", Price = 6000, Odds = { 40, 31, 19, 8.2, 1.8 }, Speed = 0.58, Durability = 500, Color = Color3.fromRGB(255, 190, 40), Length = 9 },
+	{ Id = "Dragon", Name = "Rainbow Dragon Rod", Model = "Rod_Dragon", Price = 18000, Odds = { 26, 28, 28, 14, 4 }, Speed = 0.45, Durability = 1000, Color = Color3.fromRGB(240, 240, 250), Length = 10 },
 }
 
--- Máy câu tự động: Prices[i] = giá máy thứ i (số máy tối đa = số phần tử)
--- Tiers[i] = độ hiếm (tên asset AutoFisher_<Tier>) của máy thứ i: máy càng mua sau càng xịn (chỉ khác hình, cùng sản lượng)
+-- Báo "sắp hỏng" (cần câu, pet) khi độ bền còn bằng bấy nhiêu phần của độ bền tối đa
+Config.DurabilityWarnRatio = 0.2
+
+-- Màu thanh độ bền (HUD, Bag, bảng trên máy câu): xanh dương, cam khi dưới nửa, đỏ khi sắp hỏng
+function Config.DurabilityColor(ratio)
+	if ratio <= Config.DurabilityWarnRatio then
+		return Color3.fromRGB(255, 90, 90)
+	end
+	return ratio <= 0.5 and Color3.fromRGB(255, 150, 50) or Color3.fromRGB(60, 150, 255)
+end
+
+-- Máy câu tự động (xem ECONOMY_DESIGN.md mục 4, tools/sim_economy.py).
+-- Ổ máy (PedestalPrices[i] = giá mở ổ thứ i, ổ 1 miễn phí) mở một lần, không hỏng. Số ổ tối đa = số phần tử.
+-- Máy là món tiêu hao: MUA THẲNG tier muốn vào ổ trống, hết độ bền thì biến mất (ổ còn lại), không sửa được.
+-- Nâng tier tại chỗ = trả chênh lệch giá, độ bền về đầy của tier mới.
+-- Mỗi tier: Name = tên asset AutoFisher_<Name>; Price = giá mua thẳng; Interval = giây ra 1 rương; Capacity = kho tối đa
+--   (đầy sau ~30 phút, đầy thì ngừng kể cả khi offline); Durability = số rương làm ra được trước khi hỏng;
+--   Odds = tỉ lệ ra 5 rương (Config.RollChest). Máy chỉ ra tối đa rương Purple: Golden và Rainbow chỉ có từ câu ở hồ.
 Config.AutoFisher = {
-	Prices = { 500, 1500, 4000, 10000, 25000 },
-	Tiers = { "Common", "Rare", "Epic", "Legendary", "Mythic" },
-	Interval = 30, -- giây câu được 1 rương
-	Capacity = 20, -- kho chứa tối đa (đầy thì ngừng, kể cả khi offline)
-	Luck = 1,
+	PedestalPrices = { 0, 400, 1200, 3000, 7000 },
+	Tiers = {
+		{ Name = "Common", Price = 300, Interval = 180, Capacity = 10, Durability = 120, Odds = { 100, 0, 0, 0, 0 } },
+		{ Name = "Rare", Price = 1000, Interval = 160, Capacity = 11, Durability = 200, Odds = { 70, 30, 0, 0, 0 } },
+		{ Name = "Epic", Price = 3500, Interval = 140, Capacity = 13, Durability = 450, Odds = { 55, 35, 10, 0, 0 } },
+		{ Name = "Legendary", Price = 10000, Interval = 120, Capacity = 15, Durability = 1000, Odds = { 45, 38, 17, 0, 0 } },
+		{ Name = "Mythic", Price = 30000, Interval = 100, Capacity = 18, Durability = 2500, Odds = { 35, 40, 25, 0, 0 } },
+	},
 }
 
 -- Máy ấp trứng trên plot
@@ -204,8 +267,8 @@ Config.Incubators = {
 
 -- ===== MARKET =====
 Config.SellPrices = {
-	Eggs = { Reed = 10, Bubble = 40, Crystal = 120, Gold = 400, Dragon = 1500 }, -- Starter không bán được
-	Pets = { ["Chef Cat"] = 15, ["Baker Dog"] = 25, ["Muscle Duck"] = 80, ["Magician Cat"] = 250, ["K9 Dog"] = 800, ["Office Dragon"] = 3000 },
+	Eggs = { Reed = 10, Bubble = 40, Crystal = 120, Gold = 400, Dragon = 1500 },
+	Pets = { ["Baker Dog"] = 25, ["Muscle Duck"] = 80, ["Magician Cat"] = 250, ["K9 Dog"] = 800, ["Office Dragon"] = 3000 },
 }
 
 -- ===== DI CHUYỂN =====
@@ -270,17 +333,15 @@ function Config.GetRod(id)
 	return Config.Rods[1]
 end
 
--- Chọn ngẫu nhiên 1 phần tử theo trọng số.
--- luck > 1 tăng trọng số các phần tử càng về cuối danh sách (hiếm hơn).
-function Config.WeightedRoll(list, luck)
-	luck = luck or 1
+-- Chọn ngẫu nhiên 1 phần tử theo trọng số (Weight)
+function Config.WeightedRoll(list)
 	local total = 0
-	for i, item in ipairs(list) do
-		total += item.Weight * luck ^ (i - 1)
+	for _, item in ipairs(list) do
+		total += item.Weight
 	end
 	local roll = math.random() * total
-	for i, item in ipairs(list) do
-		roll -= item.Weight * luck ^ (i - 1)
+	for _, item in ipairs(list) do
+		roll -= item.Weight
 		if roll <= 0 then
 			return item
 		end
@@ -289,13 +350,16 @@ function Config.WeightedRoll(list, luck)
 end
 
 -- Số rương đang có trong 1 máy câu tại thời điểm `now` (os.time)
--- entry = { Last = thời điểm tính gần nhất, Stored = số rương đã tích }
+-- entry = { Tier = số thứ tự trong Config.AutoFisher.Tiers, Durability = số rương còn làm ra được,
+--           Last = thời điểm tính gần nhất, Stored = số rương đã tích }
+-- Kho tối đa = Capacity của tier, và không quá độ bền còn lại (máy không làm ra nhiều hơn số rương nó còn bền)
 function Config.AutoFisherStored(entry, now)
-	local cfg = Config.AutoFisher
-	local ticks = math.max(math.floor((now - entry.Last) / cfg.Interval), 0)
-	local stored = math.min(cfg.Capacity, entry.Stored + ticks)
-	local last = entry.Last + ticks * cfg.Interval
-	if stored >= cfg.Capacity then
+	local tier = Config.AutoFisher.Tiers[entry.Tier]
+	local limit = math.min(tier.Capacity, entry.Durability)
+	local ticks = math.max(math.floor((now - entry.Last) / tier.Interval), 0)
+	local stored = math.min(limit, entry.Stored + ticks)
+	local last = entry.Last + ticks * tier.Interval
+	if stored >= limit then
 		last = now -- đầy kho: ngừng đếm
 	end
 	return stored, last

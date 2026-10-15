@@ -15,7 +15,7 @@ function Market.SellEgg(player, tier, sellAll)
 		return false, "Invalid egg."
 	end
 	if not Config.SellPrices.Eggs[tier] then
-		return false, ("%s Eggs can't be sold. Hatch it instead!"):format(tier) -- vd. Starter Egg
+		return false, ("%s Eggs can't be sold. Hatch it instead!"):format(tier) -- trứng không có giá bán
 	end
 	local have = profile.Eggs[tier] or 0
 	if have < 1 then
@@ -29,29 +29,24 @@ function Market.SellEgg(player, tier, sellAll)
 	return true, ("Sold %d %s Egg for %d coins."):format(amount, tier, coins)
 end
 
-function Market.SellPet(player, petName, sellAll)
+-- Bán 1 pet theo Id. Giá = giá gốc x tỉ lệ độ bền còn lại (Config.PetSellPrice). Bán pet đang equip thì không còn pet đi theo
+function Market.SellPet(player, id)
 	local profile = Data.Get(player)
-	if typeof(petName) ~= "string" then
-		return false, "Invalid pet."
+	local pet, index = nil, nil
+	if typeof(id) == "number" then
+		pet, index = Data.FindPet(profile, id)
 	end
-	local sold = 0
-	-- Duyệt ngược để xoá an toàn; bán 1 thì bán con mới nhất
-	for i = #profile.Pets, 1, -1 do
-		if profile.Pets[i] == petName then
-			table.remove(profile.Pets, i)
-			sold += 1
-			if sellAll ~= true then
-				break
-			end
-		end
+	if not pet then
+		return false, "You don't have this pet."
 	end
-	if sold == 0 then
-		return false, ("You don't have a %s."):format(petName)
+	local coins = Config.PetSellPrice(pet)
+	table.remove(profile.Pets, index)
+	if profile.EquippedPet == id then
+		profile.EquippedPet = nil
 	end
-	local coins = sold * (Config.SellPrices.Pets[petName] or 0)
 	profile.Coins += coins
 	Data.Update(player)
-	return true, ("Sold %d %s for %d coins."):format(sold, petName, coins)
+	return true, ("Sold %s for %d coins."):format(pet.Name, coins)
 end
 
 function Market.Init(map)

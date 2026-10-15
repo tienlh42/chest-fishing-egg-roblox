@@ -36,7 +36,7 @@ function Hatchery.OnPrompt(player, slot)
 	profile.Incubators[key] = nil
 	local petName = egg and Config.WeightedRoll(egg.Pets).Name
 	if petName then
-		table.insert(profile.Pets, petName)
+		Data.NewPet(profile, petName)
 	end
 	Data.Update(player)
 	Plots.Refresh(player)
