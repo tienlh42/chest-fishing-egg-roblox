@@ -129,9 +129,9 @@ Plot vẫn rộng 90 x 90, cổng quay ra đường, vẫn là **vùng an toàn*
 - [x] **B3. Bãi cỏ:** lối phụ, 2 quảng trường, ghế, bồn hoa, cây non và cây tán lớn, nhà bảo vệ.
 - [x] **B4. Phố:** đường bao công viên có vỉa hè, dãy nhà dân làm phông nền.
 - [x] **B5. Plot:** nhà gỗ, hàng rào, hộp thư, chuồng ấp trứng, ao nước thật, trang trí sân.
-- [x] **B6. Gameplay:** cập nhật điểm tuần tra của ngỗng, kiểm tra câu ở 3 điểm, kiểm tra ngỗng đuổi và dừng ở vùng an toàn, kiểm tra cất đồ ở Stash. Cập nhật `MAP_LEVEL1.md`.
+- [x] **B6. Gameplay:** cập nhật điểm tuần tra của ngỗng, kiểm tra câu ở 3 điểm, kiểm tra ngỗng đuổi và dừng ở vùng an toàn, kiểm tra cất đồ ở Stash. Cập nhật `docs/World/MAP_LEVEL1.md`.
 
-Toàn bộ vẫn là **đồ tạm dựng bằng code** (MVP). Sau này thay bằng build thật theo `MAP_LEVEL1.md`.
+Toàn bộ vẫn là **đồ tạm dựng bằng code** (MVP). Sau này thay bằng build thật theo `docs/World/MAP_LEVEL1.md`.
 
 ---
 

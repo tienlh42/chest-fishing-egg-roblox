@@ -1,6 +1,6 @@
 # Sound guide: vui nhộn, mềm tai, an toàn cho trẻ em
 
-Áp dụng cho mọi âm thanh trong repo (nhân vật, quái, vật phẩm, phần thưởng, giao diện). Đi cùng [STYLE_GUIDE.md](STYLE_GUIDE.md): hình ảnh chunky cartoon thì âm thanh cũng phải "tròn, nảy, ngố". Đối tượng: bé nam và nữ 13-17 tuổi, nhiều bé chơi bằng tai nghe hoặc loa điện thoại.
+Áp dụng cho mọi âm thanh trong repo (nhân vật, quái, vật phẩm, phần thưởng, giao diện). Đi cùng [docs/Art/STYLE_GUIDE.md](../Art/STYLE_GUIDE.md): hình ảnh chunky cartoon thì âm thanh cũng phải "tròn, nảy, ngố". Đối tượng: bé nam và nữ 13-17 tuổi, nhiều bé chơi bằng tai nghe hoặc loa điện thoại.
 
 ## 1. Nguyên tắc tone
 

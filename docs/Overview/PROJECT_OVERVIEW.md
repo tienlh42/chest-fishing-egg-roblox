@@ -1,7 +1,7 @@
 # Tổng quan dự án: Chest Fishing & Eggs ("Hồ Không Cho Câu")
 
-> Đọc file này **đầu tiên** (người mới / AI mới). Cập nhật lần cuối: 15/10/2026 (#39). Việc cần làm: `TASKS.md`.
-> Lịch sử thay đổi xem `DEVLOG.md`. Thiết kế game xem 2 file `GDD_*.md`.
+> Đọc file này **đầu tiên** (người mới / AI mới). Cập nhật lần cuối: 15/10/2026 (#39). Việc cần làm: `docs/ProjectManagement/TASKS.md`.
+> Lịch sử thay đổi xem `docs/ProjectManagement/DEVLOG.md`. Thiết kế game xem 2 file `GDD_*.md`.
 
 ---
 
@@ -29,7 +29,7 @@ Quy tắc bắt buộc:
 - **Chữ hiện cho người chơi: tiếng Anh.** Comment code và tài liệu viết tiếng Việt.
 - **Server quyết định mọi kết quả.** Client chỉ gửi "nhấn / nhả / yêu cầu". Server luôn kiểm tra dữ liệu client gửi lên.
 - Sửa profile xong phải gọi `Data.Update(player)` (cập nhật leaderstats + gửi `Sync` xuống client).
-- **Làm xong mỗi việc thì ghi vào `DEVLOG.md`** và cập nhật tài liệu liên quan.
+- **Làm xong mỗi việc thì ghi vào `docs/ProjectManagement/DEVLOG.md`** và cập nhật tài liệu liên quan.
 - **AI tự test và tự đưa code vào Studio** (Stop/Play, chạy Luau, giả lập bàn phím qua MCP). Kiểm tra code đã vào Studio bằng cách so `Source` với file repo (bỏ qua CRLF). Rojo mất kết nối thì chép file vào Studio qua MCP. Git push / publish lên Roblox vẫn phải hỏi người dùng.
 - Chụp màn hình MCP có đặt vị trí camera khi đang **Play** sẽ khoá camera của người chơi. Chụp xong phải Stop rồi Play lại.
 
@@ -38,6 +38,8 @@ Quy tắc bắt buộc:
 ## 3. Cấu trúc thư mục
 
 ```
+docs/                   Tài liệu, chia theo module (Overview, GameDesign, Economy, World, Art, Audio, QA, ProjectManagement). Mục lục: docs/README.md
+MakeRobuxInHere/        Kế hoạch bán vật phẩm bằng Robux (chưa code)
 ReplicatedStorage/
   Config.lua            MỌI con số của game (rương, trứng, pet, giá, ngỗng, câu, dev mode...)
   Models.lua            Models.Get(name): lấy model thật trong CustomModels (tên game -> tên asset theo Config), không có thì dựng model tạm. Anchor / PlaceOnGround / SetAnim
@@ -156,7 +158,7 @@ Assets/Models/*.rbxmx       29 model asset (cần, pet, trứng, rương, máy c
 
 ---
 
-## 6. Bản đồ (chi tiết: `MAP_LEVEL1.md`, `PARK_REDESIGN.md`)
+## 6. Bản đồ (chi tiết: `docs/World/MAP_LEVEL1.md`, `docs/World/PARK_REDESIGN.md`)
 
 - **Hồ ở chính giữa** (tâm = gốc toạ độ, 130x90 bo góc, Terrain Water), có lối gạch, lan can và đèn quanh hồ. Công viên x -110..110, z -80..80.
 - Đường vòng bán kính 150. **8 nhà gỗ xếp elip** (Rx 228, Rz 212), nên nhà nào cũng cách lối gạch quanh hồ khoảng 130 stud.
@@ -169,9 +171,9 @@ Assets/Models/*.rbxmx       29 model asset (cần, pet, trứng, rương, máy c
 
 | Thứ | Cách thay |
 |---|---|
-| Model (phao, máy ấp, NPC còn tạm) | Cần, rương, trứng, pet, máy câu, ngỗng đã dùng asset từ `Assets/Models`. Cái còn lại: đặt model đúng tên vào `ReplicatedStorage > CustomModels` (bảng tên trong `HUONG_DAN.md`). |
+| Model (phao, máy ấp, NPC còn tạm) | Cần, rương, trứng, pet, máy câu, ngỗng đã dùng asset từ `Assets/Models`. Cái còn lại: đặt model đúng tên vào `ReplicatedStorage > CustomModels` (bảng tên trong `docs/Overview/HUONG_DAN.md`). |
 | Animation nhân vật | Điền ID vào `Config.Animations` |
-| Map | Copy `Workspace > Map` vào place rồi trang trí (giữ đúng tên Part, xem `MAP_LEVEL1.md` mục 3). Terrain vẽ bằng Terrain Editor. |
+| Map | Copy `Workspace > Map` vào place rồi trang trí (giữ đúng tên Part, xem `docs/World/MAP_LEVEL1.md` mục 3). Terrain vẽ bằng Terrain Editor. |
 | UI | Dựng bằng code trong `MainUI.client.lua`, theme "Sunny Park + Egg Pop" (nút Fish tròn góc dưới phải, dock icon bên phải, cột Coins/Bag góc trên trái) |
 
 ---
@@ -180,12 +182,13 @@ Assets/Models/*.rbxmx       29 model asset (cần, pet, trứng, rương, máy c
 
 | File | Nội dung |
 |---|---|
-| `DEVLOG.md` | **Nhật ký thay đổi** theo thời gian (mới nhất ở trên) |
-| `SYSTEM_DESIGN.md` | **Thiết kế đích:** độ hiếm 5 cấp, kho rương và mở rương ở nhà, ngỗng nhà + đồn cảnh sát, cướp nhà. Có nhãn phần nào đã code, phần nào mới chốt thiết kế |
-| `ECONOMY_DESIGN.md` | **Thiết kế kinh tế farm:** tiền từ câu hồ / ao / máy câu / cướp nhà, bảng tỉ lệ rương theo cần, máy câu 5 tier, **độ bền cần / máy / pet**, **Chìa vạn năng + khóa cửa**, perk cần và pet, giá, tiến độ. Số liệu chạy từ `tools/sim_economy.py`. **Chưa code**, Config hiện tại vẫn là số cũ |
-| `HUONG_DAN.md` | Hướng dẫn cho người mới: cài đặt, chạy thử, thay model |
-| `MAP_LEVEL1.md` | Bố cục map, quy ước tên Part, cách chuyển sang map thật |
-| `PARK_REDESIGN.md` | Thiết kế công viên + nhà gỗ, ghi chú Terrain, bảng cân bằng |
-| `BUGFIX_PLAN.md` | Đợt sửa lỗi 1 (ngỗng rơi hồ, câu trên bờ, toast, đứng im khi câu) |
-| `GDD_Ho_Khong_Cho_Cau_v2.md` / `_One_Page.md` | Thiết kế game gốc |
+| `docs/ProjectManagement/DEVLOG.md` | **Nhật ký thay đổi** theo thời gian (mới nhất ở trên) |
+| `docs/GameDesign/SYSTEM_DESIGN.md` | **Thiết kế đích:** độ hiếm 5 cấp, kho rương và mở rương ở nhà, ngỗng nhà + đồn cảnh sát, cướp nhà. Có nhãn phần nào đã code, phần nào mới chốt thiết kế |
+| `docs/Economy/ECONOMY_DESIGN.md` | **Thiết kế kinh tế farm:** tiền từ câu hồ / ao / máy câu / cướp nhà, bảng tỉ lệ rương theo cần, máy câu 5 tier, **độ bền cần / máy / pet**, **Chìa vạn năng + khóa cửa**, perk cần và pet, giá, tiến độ. Số liệu chạy từ `tools/sim_economy.py`. **Chưa code**, Config hiện tại vẫn là số cũ |
+| `MakeRobuxInHere/` | **Kế hoạch bán vật phẩm bằng Robux** (README, danh mục sản phẩm, kế hoạch kỹ thuật, chính sách và rủi ro, lộ trình). **Chưa code**, chưa kiểm tra chính sách Roblox mới nhất |
+| `docs/Overview/HUONG_DAN.md` | Hướng dẫn cho người mới: cài đặt, chạy thử, thay model |
+| `docs/World/MAP_LEVEL1.md` | Bố cục map, quy ước tên Part, cách chuyển sang map thật |
+| `docs/World/PARK_REDESIGN.md` | Thiết kế công viên + nhà gỗ, ghi chú Terrain, bảng cân bằng |
+| `docs/QA/BUGFIX_PLAN.md` | Đợt sửa lỗi 1 (ngỗng rơi hồ, câu trên bờ, toast, đứng im khi câu) |
+| `docs/GameDesign/GDD_Ho_Khong_Cho_Cau_v2.md` / `_One_Page.md` | Thiết kế game gốc |
 | `CLAUDE.md` | Hướng dẫn ngắn cho AI làm việc trong repo |

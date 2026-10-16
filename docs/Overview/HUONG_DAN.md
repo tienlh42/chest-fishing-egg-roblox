@@ -28,7 +28,7 @@ Làm nhỏ trước, chạy được rồi mới thêm. Đừng làm tất cả 
 
 ## Bước 2: Map
 Map màn 1 (công viên hồ ở giữa, 8 nhà gỗ xếp vòng quanh, Tool Shop, Market) được code **tự dựng** khi bấm Play.
-Xem bố cục, quy ước tên và cách thay bằng map thật trong **`MAP_LEVEL1.md`**.
+Xem bố cục, quy ước tên và cách thay bằng map thật trong **`docs/World/MAP_LEVEL1.md`**.
 
 ## Bước 3: Đồng bộ code bằng Rojo
 Code nằm trong thư mục này và được Rojo đồng bộ vào Studio (không cần copy tay):
@@ -44,7 +44,7 @@ Chạy trong thư mục dự án (`C:\Roblox\ChestFishingEggGame`), công cụ c
 | `selene .` | Kiểm tra lỗi / cảnh báo toàn bộ code Luau (phải ra `0 errors, 0 warnings` trước khi báo xong) |
 | `rojo build -o build.rbxl` | Đóng gói thành file place để mở thử (không cần Studio đang chạy) |
 | `rojo sourcemap default.project.json -o sourcemap.json` | Cập nhật `sourcemap.json` cho VS Code gợi ý code |
-| `python tools/sim_economy.py` | Mô phỏng kinh tế (thu nhập, tiến độ, lời cướp nhà), xem `ECONOMY_DESIGN.md` |
+| `python tools/sim_economy.py` | Mô phỏng kinh tế (thu nhập, tiến độ, lời cướp nhà), xem `docs/Economy/ECONOMY_DESIGN.md` |
 | `python tools/prepare_assets.py` | Chép model từ repo `roblox-assets` vào `Assets/Models` |
 
 **Chạy thử 2 người chơi (để test cướp nhà):** trong Studio, tab **Test** > **Clients and Servers** > đặt **Players = 2** > **Start**. Người A làm xong hướng dẫn trước (nhà người đang hướng dẫn không bị cướp). Người B đứng trong sân nhà A, bấm **F** ở Stash hoặc máy câu.
@@ -61,7 +61,7 @@ Chạy trong thư mục dự án (`C:\Roblox\ChestFishingEggGame`), công cụ c
 8. Xem lỗi ở **View > Output** (chữ đỏ = lỗi, đọc dòng đầu tiên).
 
 ## Bước 5: Hiểu code (đọc theo thứ tự)
-> Danh sách đầy đủ và mới nhất các module (Bag, Guard, SafeZone, ParkBuilder, HouseBuilder...) xem **`PROJECT_OVERVIEW.md`**. Lịch sử thay đổi xem **`DEVLOG.md`**.
+> Danh sách đầy đủ và mới nhất các module (Bag, Guard, SafeZone, ParkBuilder, HouseBuilder...) xem **`docs/Overview/PROJECT_OVERVIEW.md`**. Lịch sử thay đổi xem **`docs/ProjectManagement/DEVLOG.md`**.
 
 | File | Vai trò |
 |---|---|
@@ -144,7 +144,7 @@ Mỗi model tải về có attribute `SourceAssetId` để biết nguồn, sau n
 
 **Thay animation nhân vật:** làm animation bằng Animation Editor -> Publish -> dán ID vào `Config.Animations` (`Cast`, `Reel`).
 
-**Thay map:** xem `MAP_LEVEL1.md`.
+**Thay map:** xem `docs/World/MAP_LEVEL1.md`.
 
 ## Lỗi hay gặp
 | Triệu chứng | Nguyên nhân |

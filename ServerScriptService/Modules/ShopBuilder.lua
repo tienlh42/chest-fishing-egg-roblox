@@ -1,6 +1,6 @@
 -- ModuleScript: ServerScriptService > Modules > ShopBuilder
 -- Khu CHỢ: Tool Shop (bán cần / máy, người bán là Bác Vịt Câu Cá) và Market (thu mua trứng / pet, người bán là Cô Mèo Thu Mua)
--- dựng SÁT NHAU thành một quảng trường, theo STYLE_GUIDE.md (chunky, màu tươi, nét hài, vật phẩm có "linh hồn thú vật").
+-- dựng SÁT NHAU thành một quảng trường, theo docs/Art/STYLE_GUIDE.md (chunky, màu tươi, nét hài, vật phẩm có "linh hồn thú vật").
 -- Tool Shop: biển cá khổng lồ há miệng, tường trưng bày 6 cần câu (đủ thứ tự trong Config.Rods), tủ máy câu.
 -- Market: biển đồng xu có tai mèo, rổ trứng trên quầy.
 -- Mọi thứ dựng bằng Part (đồ tạm, sau thay model thật). Tên Part cần cho code khác (KHÔNG đổi): "ToolShop" / "Market" (Model) có "PromptPart".

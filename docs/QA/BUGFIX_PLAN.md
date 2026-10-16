@@ -92,7 +92,7 @@ File đụng tới: `Fishing.lua`, `Sprint.client.lua`, `Config.lua` (`MaxMove`)
 3. `SafeZone.lua`: **bỏ `buildStash` ở Plaza** và đoạn `Init` đi tìm Stash đơn. Nếu bạn tự build map có sẵn Stash ngoài `Plots` thì vẫn dùng như cũ.
 4. `MainUI.client.lua`: `findStash` tìm Stash **trong plot của chính mình** (plot có `OwnerId == UserId`). Mũi tên và dòng `Stash X studs` chỉ về nhà mình. Chưa có plot thì ẩn.
 5. Cập nhật text: câu chào đầu game, `Stash` trong thông báo kéo rương ("Carry it home to your Stash").
-6. Cập nhật doc: `MAP_LEVEL1.md`, `HUONG_DAN.md` (Stash ở Plaza đổi thành trong nhà).
+6. Cập nhật doc: `docs/World/MAP_LEVEL1.md`, `docs/Overview/HUONG_DAN.md` (Stash ở Plaza đổi thành trong nhà).
 7. Hệ quả cần quyết định (câu hỏi 7.2): bị ngỗng bắt hiện đang đưa về Plaza. Nếu Stash ở nhà thì nên đưa về **nhà**.
 
 File đụng tới: `HouseBuilder.lua`, `Plots.lua`, `SafeZone.lua`, `Main.server.lua`, `MainUI.client.lua`, `Fishing.lua` (text), `Bag.lua` (text nếu có), 2 file doc.

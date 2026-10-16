@@ -1,6 +1,6 @@
 # Thiết kế nhà (plot) mới: sông, bến, hiên ấp, phòng rương, biển tên
 
-> Chốt 15/10/2026 theo đề xuất (anh đồng ý "làm theo đề xuất"). Code: `HouseBuilder.lua`, `IncubatorBuilder.lua`, `IncubatorAnimator.client.lua`, `ParkBuilder.BuildRiver`, `River.client.lua`, `Plots.lua`. Lịch sử: `DEVLOG.md` #46.
+> Chốt 15/10/2026 theo đề xuất (anh đồng ý "làm theo đề xuất"). Code: `HouseBuilder.lua`, `IncubatorBuilder.lua`, `IncubatorAnimator.client.lua`, `ParkBuilder.BuildRiver`, `River.client.lua`, `Plots.lua`. Lịch sử: `docs/ProjectManagement/DEVLOG.md` #46.
 
 ## 1. Quyết định đã chốt
 

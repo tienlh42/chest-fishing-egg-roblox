@@ -203,7 +203,7 @@ end
 
 -- Ngỗng bảo vệ. Patrol = các điểm tuần tra quanh hồ (toạ độ thế giới, tự bám xuống mặt đất).
 -- Đổi Patrol nếu bạn tự build map khác.
--- Cân bằng (xem BALANCE trong PARK_REDESIGN.md):
+-- Cân bằng (xem BALANCE trong docs/World/PARK_REDESIGN.md):
 --   đường từ hồ về nhà ≈ 110-130 stud: đi bộ ~8s, chạy nước rút ~4s.
 --   ngỗng đuổi 21 stud/s: đi bộ (16) bị đuổi kịp, chạy (30) thoát. Pet chặn được ~20s trước khi kiệt sức.
 Config.Guard = {
@@ -269,7 +269,7 @@ Config.Animations = {
 
 -- ===== TOOL SHOP =====
 -- Cần câu. Odds: tỉ lệ ra 5 loại rương ở HỒ CẤM (Wooden / Blue / Purple / Golden / Rainbow, xem Config.RollChest). Speed: nhân thời gian chờ (nhỏ hơn = nhanh hơn).
--- Mỗi cần cho thu nhập gấp ~1.3-1.6 lần cần trước, giá mỗi bậc ~3-4 lần (xem ECONOMY_DESIGN.md, tools/sim_economy.py).
+-- Mỗi cần cho thu nhập gấp ~1.3-1.6 lần cần trước, giá mỗi bậc ~3-4 lần (xem docs/Economy/ECONOMY_DESIGN.md, tools/sim_economy.py).
 -- Durability: số rương kéo lên được Ở HỒ CẤM trước khi cần hỏng và BIẾN MẤT (ao không hao, hụt không hao). Không có = không bao giờ hỏng (cần mặc định).
 -- Không sửa được: hỏng thì mua lại giá gốc. Cần đang cầm hỏng thì tự quay về cần đầu tiên.
 -- Model = tên asset trong CustomModels (Assets/Models, rig Motor6D + animation Idle / Cast / Reel / Catch / Miss).
@@ -294,7 +294,7 @@ function Config.DurabilityColor(ratio)
 	return ratio <= 0.5 and Color3.fromRGB(255, 150, 50) or Color3.fromRGB(60, 150, 255)
 end
 
--- Máy câu tự động (xem ECONOMY_DESIGN.md mục 4, tools/sim_economy.py).
+-- Máy câu tự động (xem docs/Economy/ECONOMY_DESIGN.md mục 4, tools/sim_economy.py).
 -- Ổ máy (PedestalPrices[i] = giá mở ổ thứ i, ổ 1 miễn phí) mở một lần, không hỏng. Số ổ tối đa = số phần tử.
 -- Máy là món tiêu hao: MUA THẲNG tier muốn vào ổ trống, hết độ bền thì biến mất (ổ còn lại), không sửa được.
 -- Nâng tier tại chỗ = trả chênh lệch giá, độ bền về đầy của tier mới.

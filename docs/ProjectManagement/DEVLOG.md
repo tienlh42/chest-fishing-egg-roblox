@@ -164,6 +164,42 @@
 
 ---
 
+## #42 · 16/10/2026 · Cấu trúc lại tài liệu theo module (thư mục `docs/`)
+**Yêu cầu:** tách các file .md vào thư mục đại diện cho từng module của một game Roblox tiêu chuẩn.
+
+**Đã làm:** `git mv` 14 file vào `docs/Overview`, `GameDesign`, `Economy`, `World`, `Art`, `Audio`, `QA`, `ProjectManagement` (mục lục ở `docs/README.md`). Sửa đường dẫn nhắc trong `CLAUDE.md`, các tài liệu, `MakeRobuxInHere`, và comment trong 5 file Lua và `tools/sim_economy.py`. `CLAUDE.md` giữ ở gốc, `MakeRobuxInHere/` giữ nguyên tên. Không đổi logic code, `default.project.json` không đổi.
+
+**Lưu ý:** các mục DEVLOG cũ vẫn ghi tên file không kèm đường dẫn (nhật ký lịch sử, tên file là duy nhất). Link cũ tới các file .md ở gốc (nếu có ngoài repo) sẽ hỏng.
+
+---
+
+## #41 · 16/10/2026 · Chốt: tuổi 13-19, Store song ngữ Anh và Việt
+**Đã làm:** ghi vào `MakeRobuxInHere` (README bảng "Đã chốt", `02` mục 7 song ngữ, `03` mục 7 quy tắc cho tuổi 13 đến 19, `04` giai đoạn 0). Đổi quy tắc trong `CLAUDE.md`: chữ cho người chơi vẫn tiếng Anh, **riêng Store và mô tả sản phẩm có thêm tiếng Việt**. Không sửa code.
+
+**Lưu ý:** quy tắc cho thanh thiếu niên là đề xuất của em, chưa đối chiếu chính sách Roblox mới nhất.
+
+---
+
+## #40 · 16/10/2026 · Chốt: chưa publish, có bán coins, người chơi Việt Nam và quanh đó
+**Đã làm:** ghi 3 câu trả lời vào `MakeRobuxInHere/README.md` (bảng "Đã chốt"); thêm `01_PRODUCTS.md` mục 10 (giá thấp, ưu tiên điện thoại, tiếng Việt cho mô tả, giờ reset ngày, Premium ít phổ biến); `03` ghi chú theo khu vực; `04` giai đoạn 0 (publish riêng tư) và gói Mini 25 R$. Không sửa code.
+
+**Chưa xong / lưu ý:** còn thiếu độ tuổi chính và việc có thêm tiếng Việt cho mô tả sản phẩm (đổi quy tắc "chữ hiện cho người chơi bằng tiếng Anh"). Chưa kiểm tra chính sách từng nước.
+
+---
+
+## #39 · 16/10/2026 · Kế hoạch bán vật phẩm bằng Robux (thư mục MakeRobuxInHere)
+**Yêu cầu:** lên kế hoạch xây hệ thống vật phẩm bán bằng Robux, đặt trong thư mục `MakeRobuxInHere`.
+
+**Đã làm:** tạo 5 file tài liệu: `README.md` (mục tiêu, nguyên tắc, 7 quyết định cần chốt), `01_PRODUCTS.md` (danh mục, giá đề xuất, mức rủi ro trả tiền để thắng, danh sách không bán), `02_TECHNICAL_PLAN.md` (`ProcessReceipt`, dữ liệu profile, chống cấp hai lần, chỗ cắm vào code hiện có, bảng Store, kiểm thử), `03_COMPLIANCE_AND_RISKS.md`, `04_ROADMAP.md` (giai đoạn 0 đến 7). Thêm tham chiếu ở `CLAUDE.md`, `PROJECT_OVERVIEW.md`.
+
+**Điểm chính:** không bán thứ ảnh hưởng cướp nhà (Chìa vạn năng, khóa, sửa chữa, pet / trứng hiếm, rương Golden và Rainbow); gói coins tính theo phút thu nhập hiện tại, có giới hạn ngày; ưu tiên trang trí và tiện lợi trước; vật phẩm ngẫu nhiên để sau cùng.
+
+**File:** `MakeRobuxInHere/*` (mới), `CLAUDE.md`, `PROJECT_OVERVIEW.md`, `DEVLOG.md`. Không sửa code.
+
+**Chưa xong / lưu ý:** em **không xác minh được chính sách Roblox mới nhất**, `03_COMPLIANCE_AND_RISKS.md` mục 1 là danh sách việc phải kiểm tra, nhật ký kiểm tra còn trống. Giá và quyền lợi là đề xuất. `DataStore` hiện dùng `SetAsync` không khóa phiên, nên nâng lên trước khi bán thật.
+
+---
+
 ## #38 · 15/10/2026 · Thanh progress bar cho HP và độ bền
 **Yêu cầu:** độ bền, HP thì làm thanh progress bar (thay cho chữ).
 

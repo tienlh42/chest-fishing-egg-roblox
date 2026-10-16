@@ -1,7 +1,7 @@
 # Thiết kế hệ thống: vật phẩm hiếm, nhà, ngỗng, cướp nhà
 
 > Dành cho dev đọc sau. Mô tả **game có những thành phần gì và cơ chế từng thành phần ra sao**, gồm cả phần đã code và phần đã chốt thiết kế nhưng chưa code.
-> Đọc kèm `PROJECT_OVERVIEW.md` (kiến trúc code hiện tại) và `DEVLOG.md` (lịch sử). File này là bản thiết kế đích, cập nhật lần cuối 14/10/2026.
+> Đọc kèm `docs/Overview/PROJECT_OVERVIEW.md` (kiến trúc code hiện tại) và `docs/ProjectManagement/DEVLOG.md` (lịch sử). File này là bản thiết kế đích, cập nhật lần cuối 14/10/2026.
 
 ## 0. Cách đọc file này
 
@@ -14,7 +14,7 @@ Mỗi mục có nhãn trạng thái:
 | **[ĐỀ XUẤT]** | Gợi ý của AI, người dùng chưa duyệt chi tiết (thường là con số). Có thể đổi khi cân bằng |
 | **[CHƯA CHỐT]** | Còn câu hỏi mở, xem mục 12 |
 
-Nếu code và file này khác nhau, **code là sự thật về hiện trạng**, còn file này là sự thật về hướng đi. Làm xong phần nào thì đổi nhãn phần đó và ghi `DEVLOG.md`.
+Nếu code và file này khác nhau, **code là sự thật về hiện trạng**, còn file này là sự thật về hướng đi. Làm xong phần nào thì đổi nhãn phần đó và ghi `docs/ProjectManagement/DEVLOG.md`.
 
 ---
 
@@ -101,7 +101,7 @@ Tên rương Epic, Legendary, Mythic và tên các cần mới là **[CHƯA CH�
 
 ### 4.1 Hiện tại [ĐÃ CÓ]
 
-Chi tiết cơ chế câu (giữ nút, câu lén, điểm rơi phao, hụt) xem `PROJECT_OVERVIEW.md` mục 5. Phần liên quan độ hiếm:
+Chi tiết cơ chế câu (giữ nút, câu lén, điểm rơi phao, hụt) xem `docs/Overview/PROJECT_OVERVIEW.md` mục 5. Phần liên quan độ hiếm:
 
 - `Fishing.lua` chọn rương bằng `Config.WeightedRoll(Config.Chests, luck)` với `luck = rod.Luck × (Lake ? Config.Fishing.LakeLuck : 1)`. Thời gian kéo = `chest.HoldTime × rod.Speed × (Pond ? PondTimeMult : 1)`.
 - **Rương tung sẵn nội dung ngay lúc câu:** `Fishing.RollReward` ra `coins` và `egg` (qua `Config.RollChestEgg`), túi giữ `{ Chest, Coins, Egg }`.
@@ -117,7 +117,7 @@ Số liệu rương hiện tại:
 
 ### 4.2 Công thức Luck cần thiết kế lại [ĐÃ CHỐT là phải sửa, công thức mới CHƯA CHỐT]
 
-> **Cập nhật 15/10/2026:** đề xuất thay công thức Luck bằng **bảng tỉ lệ rương riêng cho từng cần và từng máy câu**, kèm giá, thu nhập và luật cướp: xem `ECONOMY_DESIGN.md` mục 3, 4, 5. Phần dưới giữ lại để biết vì sao phải sửa.
+> **Cập nhật 15/10/2026:** đề xuất thay công thức Luck bằng **bảng tỉ lệ rương riêng cho từng cần và từng máy câu**, kèm giá, thu nhập và luật cướp: xem `docs/Economy/ECONOMY_DESIGN.md` mục 3, 4, 5. Phần dưới giữ lại để biết vì sao phải sửa.
 
 `WeightedRoll` nhân trọng số thứ `i` với `luck^(i-1)`. Với Legend Rod (Luck 4) ở hồ (×1.5 = 6) và 3 rương, trọng số thành 70 / 150 / 180, tức Diamond chiếm khoảng 45%. Khi lên 5 rương, rương cuối bị nhân 6⁴ = 1296 và trở thành loại phổ biến nhất.
 
@@ -280,7 +280,7 @@ Phát hiện gian lận kỹ thuật (dịch chuyển bất thường, tốc đ�
 
 ## 9. Cướp nhà [ĐÃ CHỐT]
 
-> **Cập nhật 15/10/2026 (đè lên phần dưới khi khác nhau):** cướp phải dùng **Chìa vạn năng** (tỉ lệ mở 50%, tiêu mỗi lần thử, chủ nhà mua khóa để giảm tỉ lệ). Mục tiêu cướp được là **kho nhà** và **kho trong máy câu**. Kẻ cướp **tự chọn** món, tối đa bằng số ô túi trống (không còn "giữ [E] lấy 1 món"). **Kho nhà không giới hạn ô**, túi mang trên người thì có giới hạn và phải về nhà cất. Chi tiết và số liệu: `ECONOMY_DESIGN.md` mục 7. Mọi vật phẩm (cần, máy câu, pet) cũng có **độ bền** và biến mất khi hết (`ECONOMY_DESIGN.md` mục 6).
+> **Cập nhật 15/10/2026 (đè lên phần dưới khi khác nhau):** cướp phải dùng **Chìa vạn năng** (tỉ lệ mở 50%, tiêu mỗi lần thử, chủ nhà mua khóa để giảm tỉ lệ). Mục tiêu cướp được là **kho nhà** và **kho trong máy câu**. Kẻ cướp **tự chọn** món, tối đa bằng số ô túi trống (không còn "giữ [E] lấy 1 món"). **Kho nhà không giới hạn ô**, túi mang trên người thì có giới hạn và phải về nhà cất. Chi tiết và số liệu: `docs/Economy/ECONOMY_DESIGN.md` mục 7. Mọi vật phẩm (cần, máy câu, pet) cũng có **độ bền** và biến mất khi hết (`docs/Economy/ECONOMY_DESIGN.md` mục 6).
 
 **Điều kiện:** chỉ cướp được nhà của người **đang online**. Plot chỉ có chủ khi người đó trong game, nên khớp với `Plots.lua` hiện có (thu hồi plot khi chủ thoát).
 
@@ -389,7 +389,7 @@ Nguồn: repo `roblox-assets` (cạnh repo game). Repo đó **chỉ làm model, 
 - Chữ hiện cho người chơi **tiếng Anh**. Comment code và tài liệu **tiếng Việt**.
 - Sửa script ở file `.lua`, không sửa trong Studio (Rojo ghi đè). Chạy `selene .` trước khi báo xong.
 - Thêm tính năng dùng `Models.Get` + `CustomModels`, không chờ có model thật.
-- Làm xong mỗi việc: thêm mục trên cùng `DEVLOG.md` và cập nhật tài liệu liên quan, kể cả file này.
+- Làm xong mỗi việc: thêm mục trên cùng `docs/ProjectManagement/DEVLOG.md` và cập nhật tài liệu liên quan, kể cả file này.
 
 ---
 

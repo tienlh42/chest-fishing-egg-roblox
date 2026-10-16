@@ -1,5 +1,5 @@
 -- ModuleScript: ServerScriptService > Modules > MapBuilder
--- Dựng map màn 1 TẠM bằng Part + Terrain (xem MAP_LEVEL1.md và PARK_REDESIGN.md).
+-- Dựng map màn 1 TẠM bằng Part + Terrain (xem docs/World/MAP_LEVEL1.md và docs/World/PARK_REDESIGN.md).
 -- Nếu Workspace đã có Folder "Map" (map bạn tự build) thì KHÔNG dựng gì, dùng luôn map đó.
 --   Bố cục: công viên hồ ở CHÍNH GIỮA, 8 nhà xếp VÒNG TRÒN quanh hồ (nhà nào ra hồ cũng xa như nhau),
 --           Tool Shop + Market dựng SÁT NHAU thành 1 quảng trường ở khe giữa 2 nhà (góc 225°). Không có sảnh chính.

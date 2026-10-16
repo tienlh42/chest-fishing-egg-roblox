@@ -23,7 +23,7 @@ Hồ ở **chính giữa** (tâm = gốc toạ độ), **8 nhà xếp vòng quan
 
 | Khu | Vị trí | Ghi chú |
 |---|---|---|
-| Công viên hồ (Lake Park) | hồ tâm (0,0,0) 130x90 bo góc; công viên x -110..110, z -80..80 | Hồ cấm câu (ngỗng tuần tra). Lối gạch + lan can + đèn quanh hồ (câu từ lối gạch qua lan can), 4 lối ra, 2 quảng trường, nhà bảo vệ. Chi tiết: `PARK_REDESIGN.md` |
+| Công viên hồ (Lake Park) | hồ tâm (0,0,0) 130x90 bo góc; công viên x -110..110, z -80..80 | Hồ cấm câu (ngỗng tuần tra). Lối gạch + lan can + đèn quanh hồ (câu từ lối gạch qua lan can), 4 lối ra, 2 quảng trường, nhà bảo vệ. Chi tiết: `docs/World/PARK_REDESIGN.md` |
 | Đường vòng | bán kính 150, rộng 10 | Có lối gạch vào từng nhà và 2 cửa hàng |
 | 8 Plot (nhà gỗ) | elip Rx = 228, Rz = 212 (`PLOT_RX/RZ` trong `MapBuilder.lua`), góc 22.5° + k·45° | Cổng quay về phía hồ. Là vùng an toàn |
 | Tool Shop | góc 225°, cách tâm 192 | Có điểm hồi sinh `Spawn` phía trước (chỉ dùng lúc mới vào, sau đó về nhà) |
@@ -33,7 +33,7 @@ Hồ ở **chính giữa** (tâm = gốc toạ độ), **8 nhà xếp vòng quan
 - Cả map nằm trên **Terrain** cỏ LeafyGrass (mặt đất y = 0) do code tạo (`ParkBuilder.lua`). **Baseplate bị xoá khi chạy game** (nếu không nó cắt ngang lòng hồ).
 - Hồ hình chữ nhật bo góc (`HX, HZ, R` trong `ParkBuilder.lua`), sâu 8 stud, đáy cát. Màu/sóng nước chỉnh ở `terrain.Water*` trong `buildTerrain()`.
 - Câu cá dựa vào Part vô hình tên `Water` phủ vùng hồ (Terrain không có tên để code tìm).
-- Lưu ý kỹ thuật: xem mục 7 của `PARK_REDESIGN.md` (fill Air trước Water, lệch 2 stud của Terrain, LeafyGrass).
+- Lưu ý kỹ thuật: xem mục 7 của `docs/World/PARK_REDESIGN.md` (fill Air trước Water, lệch 2 stud của Terrain, LeafyGrass).
 
 ## 2. Bên trong 1 Plot = lô nhà gỗ (90 x 90)
 
@@ -99,7 +99,7 @@ Ghi chú:
 
 ⚠️ Terrain (hồ, đất, cát) **không nằm trong folder `Map`** nên copy `Map` sẽ không mang theo terrain. Khi tự build map: dùng **Terrain Editor** (tab Home > Editor) để vẽ hồ/đất, nhớ giữ Part vô hình tên `Water` phủ vùng được câu.
 
-Model đặt lên map (máy ấp, máy câu, NPC, rương, pet...) thay ở `ReplicatedStorage > CustomModels`, xem `HUONG_DAN.md`.
+Model đặt lên map (máy ấp, máy câu, NPC, rương, pet...) thay ở `ReplicatedStorage > CustomModels`, xem `docs/Overview/HUONG_DAN.md`.
 
 ## 5. Checklist giai đoạn tạo map
 

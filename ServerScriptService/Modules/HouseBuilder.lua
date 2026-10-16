@@ -1,5 +1,5 @@
 -- ModuleScript: ServerScriptService > Modules > HouseBuilder
--- Dựng 1 plot = lô nhà dân (thiết kế HOME_DESIGN.md): nhà gỗ vào được bên trong (có nội thất + PHÒNG RƯƠNG), biển tên TO ĐÙNG trên nóc,
+-- Dựng 1 plot = lô nhà dân (thiết kế docs/World/HOME_DESIGN.md): nhà gỗ vào được bên trong (có nội thất + PHÒNG RƯƠNG), biển tên TO ĐÙNG trên nóc,
 -- hiên kính ấp trứng (4 bệ máy ấp), BẾN GỖ sát SÔNG ở sân sau (5 bệ máy câu). Sông vòng quanh các nhà do ParkBuilder.BuildRiver dựng.
 -- Toạ độ trong file là toạ độ CỤC BỘ của plot: tâm (0,0,0), cổng ở -Z (quay ra đường), sân sau ở +Z (quay ra sông).
 --

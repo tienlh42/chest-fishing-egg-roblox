@@ -1,7 +1,7 @@
 # TASKS: Danh sách việc cần làm
 
-> Claude tick `[x]` và ghi chú ngay sau mỗi việc xong. Chi tiết từng việc xem `DEVLOG.md`. Cập nhật lần cuối: 15/10/2026.
-> Thứ tự lấy từ `ECONOMY_DESIGN.md` mục 11 và `SYSTEM_DESIGN.md` mục 15.
+> Claude tick `[x]` và ghi chú ngay sau mỗi việc xong. Chi tiết từng việc xem `docs/ProjectManagement/DEVLOG.md`. Cập nhật lần cuối: 15/10/2026.
+> Thứ tự lấy từ `docs/Economy/ECONOMY_DESIGN.md` mục 11 và `docs/GameDesign/SYSTEM_DESIGN.md` mục 15.
 
 ## Bước 5: Kho nhà giữ rương chưa mở + mở rương (XONG)
 
@@ -17,7 +17,7 @@
 - [x] Chạy `selene .` (0 lỗi). Studio đang chạy bản code CŨ hơn repo nhiều (Rojo không nối) nên đã đồng bộ cả 18 script qua MCP
 - [x] Test server trong Play: cất 3 rương → kho đúng; mở xa Stash bị chặn; tên rương sai / hết rương bị chặn; Open một, Open all, mở kho trống đều đúng
 - [x] Test UI bảng Stash trong Play: `Stash.OnPrompt` mở bảng đúng, bảng hiện rương + nút, gọi Action từ client rồi bảng cập nhật. (Chưa bấm chuột thật / [E] thật, chưa câu thật rồi cất)
-- [x] Ghi `DEVLOG.md` #39 + cập nhật `PROJECT_OVERVIEW.md`, `SYSTEM_DESIGN.md` (mục 5.2), `ECONOMY_DESIGN.md` (mục 11)
+- [x] Ghi `docs/ProjectManagement/DEVLOG.md` #39 + cập nhật `docs/Overview/PROJECT_OVERVIEW.md`, `docs/GameDesign/SYSTEM_DESIGN.md` (mục 5.2), `docs/Economy/ECONOMY_DESIGN.md` (mục 11)
 
 **BƯỚC 5 XONG (15/10/2026).** Còn lại nên làm tay: câu thật một lần ở hồ, về cất, bấm [E] mở, xem hình hiệu ứng.
 
@@ -74,7 +74,7 @@
 - [x] Server chặn mua / nâng cấp khi không đứng trong sân nhà mình
 - [ ] Anh test thật: bấm [E] ở bệ máy ấp khóa, ổ máy, [G] ở máy, [E] ở biển tên
 
-## Thiết kế lại nhà (15/10/2026, HOME_DESIGN.md)
+## Thiết kế lại nhà (15/10/2026, docs/World/HOME_DESIGN.md)
 
 - [x] Máy ấp "Tổ Ấm": model + hoạt ảnh lặp + hoạt ảnh nở / vỡ vòm
 - [x] Biển tên to (ảnh avatar + tên) trên nóc nhà

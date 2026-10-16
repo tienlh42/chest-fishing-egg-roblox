@@ -1,7 +1,7 @@
 # Thiết kế kinh tế: kiếm tiền bằng farm (câu, máy câu, cướp) + độ bền
 
 > Dành cho dev đọc sau. Mô tả **tiền từ đâu ra, tiêu vào đâu, và vì sao con số như vậy**. Cập nhật lần cuối 15/10/2026 (bản 2: thêm độ bền, chìa vạn năng, kho vô hạn).
-> Đọc kèm `SYSTEM_DESIGN.md` (rương, trứng, pet, ngỗng, cướp nhà) và `PROJECT_OVERVIEW.md` (code hiện tại).
+> Đọc kèm `docs/GameDesign/SYSTEM_DESIGN.md` (rương, trứng, pet, ngỗng, cướp nhà) và `docs/Overview/PROJECT_OVERVIEW.md` (code hiện tại).
 > Số liệu lấy từ `tools/sim_economy.py` (mô phỏng giá trị kỳ vọng). Muốn đổi số: sửa script, chạy lại, rồi chép vào `Config.lua`.
 
 ## 0. Nhãn trạng thái và các điều đã chốt
@@ -166,7 +166,7 @@ Chi tiết cần quyết định:
 
 ## 7. Cướp nhà
 
-Luồng chung (đột nhập sân, đồng hồ 60 giây, ngỗng nhà, đồn cảnh sát) ở `SYSTEM_DESIGN.md` mục 8, 9. Phần này chốt **luật kinh tế đã sửa** theo các điều anh đã chốt.
+Luồng chung (đột nhập sân, đồng hồ 60 giây, ngỗng nhà, đồn cảnh sát) ở `docs/GameDesign/SYSTEM_DESIGN.md` mục 8, 9. Phần này chốt **luật kinh tế đã sửa** theo các điều anh đã chốt.
 
 ### 7.1 Chìa vạn năng và khóa [ĐÃ CHỐT chìa 50%, giá và khóa là ĐỀ XUẤT]
 

@@ -1,5 +1,5 @@
 -- ModuleScript: ServerScriptService > Modules > ParkBuilder
--- Công viên hồ trong khu dân cư (xem PARK_REDESIGN.md):
+-- Công viên hồ trong khu dân cư (xem docs/World/PARK_REDESIGN.md):
 --   nền Terrain cỏ thấp, hồ nước thật hình chữ nhật bo góc, bờ kè, lối gạch + lan can + đèn ôm quanh hồ,
 --   4 lối phụ, đường vòng quanh công viên, 2 quảng trường, cây non có cọc chống, cây tán lớn, nhà bảo vệ.
 -- Hồ là "Lake" (hồ cấm, ngỗng tuần tra) – KHÔNG phải vùng an toàn.
