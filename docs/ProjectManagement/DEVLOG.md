@@ -164,6 +164,100 @@
 
 ---
 
+## #50 · 16/10/2026 · Chốt 2 câu mở của tiến hóa pet
+**Đã làm:** anh đồng ý, nên `PET_EVOLUTION.md` mục 10 thành bảng "đã chốt" (dùng số bản trùng ước lượng và chỉnh sau khi đo; có thông báo toàn phòng khi lên Stage 3 K9 Dog và Office Dragon). Thêm sự kiện đó vào bảng thông báo của `SERVER_BOARD.md` mục 3.1, sửa ghi chú E4 trong `TASKS.md`. Không sửa code.
+
+---
+
+## #49 · 16/10/2026 · Thiết kế tiến hóa pet theo loài (PET_EVOLUTION.md)
+**Yêu cầu:** nở ra pet trùng thì nâng cấp pet và phóng to; chốt cách B (tiến độ theo loài), phóng to vừa đủ, đổi cả sức mạnh.
+
+**Đã làm:**
+- `docs/GameDesign/PET_EVOLUTION.md` (mới): bộ đếm bản trùng theo loài, Stage 1-3 (kích thước x1.0 / 1.2 / 1.4, HP, độ bền, kỹ năng x1.0 / 1.25 / 1.5), bảng bản trùng (Baker Dog 8/30, Muscle Duck 5/14, Magician Cat 4/10, K9 Dog 3/7, Office Dragon 2/4), độ bền tăng tối đa không đầy lại, cân bằng với tỉ lệ bị bắt, dữ liệu `profile.PetStages`, đổi kích thước, giao diện, rủi ro.
+- `docs/ProjectManagement/TASKS.md`: R5b thành E0 đến E5; cập nhật `docs/README.md`, `SYSTEM_DESIGN.md` mục 6.3, `RETENTION.md`.
+
+**Số liệu:** trứng mỗi giờ theo loài tính từ `tools/sim_economy.py` (bắt 20% mỗi lần câu): Reed 21-26, Bubble 1.3-15, Crystal 0.2-7.4, Gold 0.02-2.5, Dragon 0 đến 0.36 mỗi giờ tùy cần. Từ đó ước lượng Stage 3 của Baker Dog ~1.5 giờ, Office Dragon hơn 10 giờ. Ước lượng, chưa có số đo.
+
+**Không sửa code.** Rủi ro chưa kiểm chứng: `ScaleTo` trên rig `Motor6D` có thể méo hoạt ảnh vì `PetAnimator` ghi `Motor6D.Transform` trực tiếp; thử ở bước E0 trong Studio.
+
+**Chưa xong:** 2 câu mở ở mục 10 (số bản trùng sau khi có số đo thật; thông báo toàn phòng khi lên Stage 3).
+
+---
+
+## #48 · 16/10/2026 · Chốt 4 câu mở của bảng điểm phòng
+**Đã làm:** anh "làm theo đề xuất", nên `docs/GameDesign/SERVER_BOARD.md` mục 7 thành bảng "đã chốt": vòng 30 phút; thưởng top 3 bằng xu (3 / 2 / 1 phút thu nhập); chưa làm tab Escapes ở đầu; Prismatic để sau. Sửa ghi chú tab Escapes ở `TASKS.md` mục B5. Không sửa code.
+
+---
+
+## #47 · 16/10/2026 · Thiết kế phòng nhỏ: bảng điểm và thông báo toàn server
+**Yêu cầu:** nhân giá pet biến thể lên; có thông báo toàn server; mỗi phòng nhỏ 4-8 người có bảng điểm riêng để xem ai đang đứng đầu.
+
+**Đã làm:**
+- `docs/GameDesign/SERVER_BOARD.md` (mới): phòng 4-8 người, bảng điểm hiển thị thu gọn, vòng 30 phút, bảng điểm chỉ tính khi cất an toàn (1 / 3 / 8 / 20 / 50 cho 5 rương), thưởng top 3 (3 / 2 / 1 phút thu nhập, chỉ xu), danh sách thông báo (Golden, Shiny, Rainbow, bị bắt, đổi người đứng đầu, cuối vòng) kèm chống ồn, kỹ thuật `ServerBoard.lua` + `Config.Board`, rủi ro, 4 câu mở.
+- `docs/Art/PET_VARIANTS.md` mục 10 thành bảng "đã chốt" (giá Shiny x1.5, Golden x3; thông báo có; Prismatic để sau).
+- `docs/ProjectManagement/TASKS.md`: thêm mục "Phòng nhỏ" B0 đến B5; sửa V3, V5 của R5 cho khớp. Cập nhật `docs/README.md`, `RETENTION.md`.
+
+**Không sửa code.**
+
+**Lưu ý:** "thông báo toàn server" em hiểu là cả phòng (server) đó, không cần `MessagingService`. Thang điểm và thưởng là đề xuất. Bảng này khác bảng xếp hạng tuần toàn cầu (RETENTION R6).
+
+**Chưa xong:** 4 câu mở ở mục 7 của `SERVER_BOARD.md` (độ dài vòng, thưởng top 3, tab Escapes, Prismatic).
+
+---
+
+## #46 · 16/10/2026 · Chốt giữ chân, kế hoạch biến thể pet (đổi màu và hiệu ứng)
+**Yêu cầu:** đồng ý các câu mở về giữ chân; pet mới làm bằng cách lên kế hoạch đổi màu và hiệu ứng.
+
+**Đã làm:**
+- `docs/Art/PET_VARIANTS.md` (mới): cấu trúc model pet đọc từ `.rbxmx` (Part + SpecialMesh, Motor6D, `PetEffects` đọc `Rarity` tạo Highlight và hạt), biến thể Normal / Shiny (1%, bảo hiểm 150) / Golden (0.1%) / Prismatic (sau), hàm `Models.ApplyVariant`, `Config.PetVariants`, LocalScript trung tâm `PetVariantEffects`, dữ liệu, UI, quan hệ với cosmetic Robux, rủi ro, việc cần xem trong Studio, 3 câu mở.
+- `docs/GameDesign/RETENTION.md` mục 9 thành bảng "đã chốt" (quà đăng nhập chỉ xu, 12 nhiệm vụ mỗi ngày, chấp nhận giảm ~7%, pet mới bằng biến thể màu).
+- `docs/ProjectManagement/TASKS.md`: R5 thành "Biến thể pet" V0 đến V6, R5b là gộp và tiến hóa; cập nhật `docs/README.md`.
+
+**Không sửa code.** Chưa xem model trong Studio (phiên này không có Studio MCP), nên màu và danh sách part bỏ qua cần thử ở bước V0.
+
+**Chưa xong / lưu ý:** 3 câu mở ở mục 10 của `PET_VARIANTS.md` (giá bán biến thể, thông báo toàn server khi Golden, Prismatic làm ngay hay sau).
+
+---
+
+## #45 · 16/10/2026 · Thiết kế lối chơi giữ chân (RETENTION.md) và task list
+**Yêu cầu:** bàn lối chơi giữ chân. Chốt: nhiệm vụ lặp lại, chỉ thưởng xu, không bắt buộc; phiên ≤ 30 phút nhưng chơi nhiều lần (rút ngắn thu hoạch); không Rebirth; có cosmetic (chưa làm); có đội.
+
+**Đã làm:** tạo `docs/GameDesign/RETENTION.md` (nhịp phiên 30 phút, Quest Board với thưởng tính theo phút thu nhập và giới hạn 12/ngày, rút ngắn kho máy còn 9-20 phút, nhật ký sưu tập, thanh mục tiêu, quà đăng nhập chỉ xu, dài hạn không Rebirth, số liệu cần đo, 4 câu còn mở). Thêm mục "Giữ chân" R0 đến R7 vào `docs/ProjectManagement/TASKS.md`. Cập nhật `docs/README.md`. Không sửa code.
+
+**Tính từ mô hình:** kho máy 30 phút → 9-20 phút làm thu nhập thụ động giảm ~30% với phiên 30 phút nghỉ 30 phút, tổng giảm ~7% (cần chạy lại `tools/sim_economy.py` khi làm R2). Nhiệm vụ cộng khoảng +15% thu nhập (em ước lượng, cần mô phỏng khi code).
+
+**Chưa xong / lưu ý:** 4 câu mở ở mục 9 của tài liệu (quà đăng nhập, giới hạn nhiệm vụ mỗi ngày, bù thu nhập kho máy, pet mới và model).
+
+---
+
+## #44 · 16/10/2026 · Chốt lối chơi chính, liệt kê task list
+**Yêu cầu:** chốt, liệt kê các giai đoạn thành task list để anh làm sau.
+
+**Đã làm:** `docs/GameDesign/CORE_GAMEPLAY.md` mục 9 đổi thành bảng "Các điểm đã chốt" (câu tự do đúng ý, chiếm ô túi, bù kinh tế cách 1 sau khi đo, bắt ngay kể cả pet khỏe, coop mời bằng bạn Roblox, đêm để sau cùng). `docs/ProjectManagement/TASKS.md` mục "Lối chơi chính" viết lại thành 10 giai đoạn GĐ0 đến GĐ9, mỗi việc ghi file cần sửa và tiêu chí xong. Không sửa code.
+
+**Lưu ý:** "chốt" em hiểu là đồng ý toàn bộ đề xuất mặc định của em; riêng đêm ở hồ em ghi tùy chọn làm sau cùng.
+
+---
+
+## #43 · 16/10/2026 · Kế hoạch lối chơi chính (hồ thót tim, nhà dễ chịu, 3 hướng nâng cấp)
+**Yêu cầu:** lên kế hoạch 3 hướng nâng cấp lối chơi chính; hồ thót tim, nhà farm dễ chịu (ao an toàn, 20% trúng rương); hồ 20% lần câu bị bắt, câu gần ngỗng bị bắt ngay; câu tự do ở hồ ra ít tiền; coop là lựa chọn; ghi docs.
+
+**Đã làm:**
+- Tạo `docs/GameDesign/CORE_GAMEPLAY.md`: luật đã chốt, bảng so sánh hồ và nhà, hướng B (ngỗng sống), A (kéo căng thẳng), C (kỹ năng pet, dụng cụ, coop), hai luồng thu hút / giữ chân, số liệu cần đo, thứ tự làm 9 giai đoạn, 6 câu cần xác nhận.
+- `tools/sim_economy.py`: thêm mô hình `CATCH_PER_CAST` (bắt mỗi lần câu) và `POND_HIT` (ao trúng rương), hàm `compare_catch_models()` in bảng so sánh cũ / mới.
+- Cập nhật `docs/README.md`, `docs/ProjectManagement/TASKS.md` (mục "Lối chơi chính").
+
+**Phát hiện từ mô phỏng:**
+- 20% bị bắt mỗi lần câu (mất cả túi 4 rương) làm thu nhập hồ còn khoảng **60%** mô hình cũ (cất được 0.49 rương mỗi lần câu thay vì 0.82). Cần chọn cách bù: giảm giá 40%, tăng giá trị rương x1.65, hoặc chấp nhận chậm hơn.
+- Ao 20% trúng rương cho ~15 coins/phút với mọi cần, bằng 69% hồ ở đầu game và 11% khi cầm Dragon.
+- Câu tự do cần phần thưởng rất thấp (2-4 coins); nếu cao hơn thì ngang với câu ở điểm câu (em tính tay, cần chạy lại khi code).
+
+**File:** `docs/GameDesign/CORE_GAMEPLAY.md` (mới), `tools/sim_economy.py`, `docs/README.md`, `docs/ProjectManagement/TASKS.md`. Không sửa code Luau.
+
+**Chưa xong / lưu ý:** 20% bị bắt là mục tiêu đo được, hiện chưa có log nên chưa biết số thật. Em hiểu "câu tự do" theo một cách, cần anh xác nhận (mục 9 của tài liệu).
+
+---
+
 ## #42 · 16/10/2026 · Cấu trúc lại tài liệu theo module (thư mục `docs/`)
 **Yêu cầu:** tách các file .md vào thư mục đại diện cho từng module của một game Roblox tiêu chuẩn.
 

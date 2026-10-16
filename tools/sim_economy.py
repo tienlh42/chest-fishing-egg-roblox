@@ -1,4 +1,4 @@
-"""Mô phỏng kinh tế (giá trị kỳ vọng, không ngẫu nhiên) cho ECONOMY_DESIGN.md.
+"""Mô phỏng kinh tế (giá trị kỳ vọng, không ngẫu nhiên) cho docs/Economy/ECONOMY_DESIGN.md.
 
 Chạy: python tools/sim_economy.py   (Windows: đặt PYTHONIOENCODING=utf-8)
 Mọi tham số nằm ở đầu file. Muốn thử số mới: sửa ở đây, chạy lại, rồi chép số tốt nhất vào Config.lua.
@@ -58,13 +58,29 @@ def mix_stats(odds):
     return p, ev, hold
 
 
+CATCH_PER_CAST = None  # nếu đặt (vd. 0.2): mỗi lần câu ở hồ bị bắt với xác suất này, bắt thì mất cả túi và chuyến kết thúc
+
+
+def trip_stats(p, bag):
+    """Với xác suất bị bắt p mỗi lần câu: (rương cất được mỗi lần câu, số chuyến mỗi lần câu).
+    Chuyến kết thúc khi túi đầy (cất được `bag` rương) hoặc bị bắt (mất hết)."""
+    full = (1 - p) ** bag
+    casts_per_trip = sum((1 - p) ** k for k in range(bag))
+    return bag * full / casts_per_trip, 1 / casts_per_trip
+
+
 def lake_income(rod_i):
     """(EV/rương, rương/phút, thu nhập gộp/phút, chi phí hao mòn cần/phút, thu nhập ròng/phút)"""
     rod = RODS[rod_i]
     _, ev, hold = mix_stats(rod[4])
-    per_chest = hold * rod[2] * SNEAK_FACTOR + CAST_OVERHEAD + TRIP_OVERHEAD / BAG
-    survive = 1 - (LOSS_BASE - LOSS_PER_HP * PET_HP)
-    cpm = 60 / per_chest * survive * SUPPLY_SHARE
+    if CATCH_PER_CAST is None:
+        per_chest = hold * rod[2] * SNEAK_FACTOR + CAST_OVERHEAD + TRIP_OVERHEAD / BAG
+        survive = 1 - (LOSS_BASE - LOSS_PER_HP * PET_HP)
+        cpm = 60 / per_chest * survive * SUPPLY_SHARE
+    else:
+        deposit_per_cast, trips_per_cast = trip_stats(CATCH_PER_CAST, BAG)
+        per_cast = hold * rod[2] * SNEAK_FACTOR + CAST_OVERHEAD + TRIP_OVERHEAD * trips_per_cast
+        cpm = 60 / per_cast * deposit_per_cast * SUPPLY_SHARE
     wear = rod[1] / rod[3] * cpm if rod[3] else 0.0
     return ev, cpm, ev * cpm, wear, ev * cpm - wear
 
@@ -73,10 +89,18 @@ POND_ODDS = (100, 0, 0, 0, 0)  # ao nhà: chỉ ra rương gỗ
 POND_TIME_MULT = 5.0
 
 
+POND_HIT = None  # nếu đặt (vd. 0.2): mỗi lần câu ở ao chỉ có chừng này xác suất cắn rương, còn lại "không có gì cắn"
+POND_WAIT = 5.0  # giây chờ phao mỗi lần câu ở ao khi dùng POND_HIT
+
+
 def pond_income(rod_i):
     rod = RODS[rod_i]
     _, ev, hold = mix_stats(POND_ODDS)
-    per_chest = hold * POND_TIME_MULT * rod[2] + CAST_OVERHEAD
+    if POND_HIT is None:
+        per_chest = hold * POND_TIME_MULT * rod[2] + CAST_OVERHEAD
+    else:
+        # mỗi lần thử tốn CAST_OVERHEAD + POND_WAIT; trung bình 1/POND_HIT lần thử mới có 1 rương, rồi kéo hold x Speed
+        per_chest = (CAST_OVERHEAD + POND_WAIT) / POND_HIT + hold * rod[2]
     return ev * 60 / per_chest  # ao KHÔNG làm hao cần (chỉ kéo rương ở hồ cấm mới hao)
 
 
@@ -221,7 +245,23 @@ def table_robbery():
             print(f"  {name:<30} {loot:8.0f} | " + " | ".join(cells) + f" | {fishing:8.0f}")
 
 
+def compare_catch_models():
+    """So 2 mô hình rủi ro ở hồ và ao: cũ (mất túi 18% mỗi chuyến, ao luôn có rương) với mới (bắt 20% mỗi lần câu, ao 20% trúng)."""
+    global CATCH_PER_CAST, POND_HIT
+    print("\n=== So sánh mô hình rủi ro (coins ròng / phút) ===")
+    print("Cần             Hồ cũ   Hồ mới (bắt 20%/lần câu)  hồ mới/cũ   Ao cũ   Ao mới (20% trúng)  ao mới / hồ mới")
+    rows = []
+    for mode in ("old", "new"):
+        CATCH_PER_CAST, POND_HIT = (None, None) if mode == "old" else (0.2, 0.2)
+        rows.append([(lake_income(i)[4], pond_income(i)) for i in range(len(RODS))])
+    for i, rod in enumerate(RODS):
+        (lo, po), (ln, pn) = rows[0][i], rows[1][i]
+        print(f"{rod[0]:<15} {lo:7.1f} {ln:9.1f} {ln / lo:22.0%} {po:9.1f} {pn:14.1f} {pn / ln:18.0%}")
+    CATCH_PER_CAST, POND_HIT = None, None
+
+
 if __name__ == "__main__":
+    compare_catch_models()
     table_rods()
     table_machines()
     pet_table()

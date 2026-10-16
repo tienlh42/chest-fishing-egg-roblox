@@ -198,6 +198,8 @@ Hiện `Bag.Deposit` cộng ngay `coins` và `eggs` vào profile rồi lưu (n�
 
 ### 6.3 Gộp và tiến hóa pet [ĐÃ CHỐT hướng, điều kiện CHƯA CHỐT]
 
+> **Cập nhật 16/10/2026:** đã chốt **tiến độ theo loài** (nở trùng thì cả loài lên Stage, phóng to tối đa x1.4 và tăng HP, độ bền, kỹ năng x1.5); xem `PET_EVOLUTION.md`. Phần dưới giữ lại để biết hướng gốc.
+
 Theo `roblox-assets/Pet/PLAN_EVOLUTION.md`:
 - Tối đa **3 dạng** (`Stage` 1, 2, 3). Cùng một model, size nhân 1.0 / 1.2 / 1.4 (nhân trên hệ số độ hiếm), phụ kiện cộng dồn.
 - Game đặt attribute `Stage` trên model pet. Muốn đổi size phải `ScaleTo` và nhân `HipHeight` (chưa kiểm chứng với rig tự dựng này).
